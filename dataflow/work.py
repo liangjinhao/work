@@ -40,5 +40,5 @@ if __name__ == '__main__':
     except Exception as e:
         logging.warning(hc.last_id)
         print(time.ctime() + '  ====出现异常！！====', file=f_log)
-        traceback.print_exc()
-        print(traceback.print_exc(), file=f_log)
+        s = traceback.format_exc()
+        print(s, file=f_log)

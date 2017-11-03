@@ -23,5 +23,5 @@ class HanlpSegmentor:
             result.append((word, nature))
         return result
 
-a = HanlpSegmentor()
-print(a.get_segments(u'上实发展资产负债表'))
+# a = HanlpSegmentor()
+# print(a.get_segments(u'上实发展资产负债表'))

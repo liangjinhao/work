@@ -6,7 +6,9 @@ import logging
 class MongdbControl(object):
 
     def __init__(self, table_name, start_id=None):
-        self.client = MongoClient('mongodb://search:ba3Re3ame+Wa@121.40.131.65:3718/cr_data', appname='chart_push')
+        # mongodb://search:ba3Re3ame+Wa@121.40.131.65:3718/cr_data
+        # mongodb://search:ba3Re3ame%2bWa@dds-bp1d09d4b278ceb42.mongodb.rds.aliyuncs.com:3717,dds-bp1d09d4b278ceb41.mongodb.rds.aliyuncs.com:3717/cr_data
+        self.client = MongoClient('mongodb://search:ba3Re3ame%2bWa@dds-bp1d09d4b278ceb42.mongodb.rds.aliyuncs.com:3717,dds-bp1d09d4b278ceb41.mongodb.rds.aliyuncs.com:3717/cr_data', appname='chart_push')
         db = self.client['cr_data']
         self.collection = db[table_name]
         self.page_size = 100
@@ -26,9 +28,6 @@ class MongdbControl(object):
         self.client.close()
 
     def yield_data(self):
-
-        if self.num % 10000 == 0:
-            print('已经从mongodb读出{0}万条数据！！'.format(self.num))
         # logging.warning('数据ID：' + self.id + '，读取数据条数：' + str(self.num))
         record = self.cursor.next()
         while record:
@@ -38,5 +37,3 @@ class MongdbControl(object):
             self.num += 1
             record = self.cursor.next()
             yield new_record
-import time
-print(time.ctime() + 'sss')
