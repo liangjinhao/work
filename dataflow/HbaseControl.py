@@ -6,11 +6,12 @@ from hbase import Hbase
 from hbase.ttypes import *
 import hashlib
 import time
+import traceback
 import logging
 
 class HbaseControl(object):
 
-    def __init__(self, table, column_families, host='121.199.7.171', port=9090):
+    def __init__(self, table, column_families, host='121.199.7.171', port=9090, put_num=0):
         """
         初始化一个 HBase Table
         :param table: 表的名字,比如 b'hb_charts'
@@ -34,6 +35,7 @@ class HbaseControl(object):
 
         self.max_sleep_time = 60*60  # 最大等待时间为1小时
         self.last_id = ''
+        self.put_num = put_num
 
         # set table and column families
         self.table = table
@@ -47,7 +49,7 @@ class HbaseControl(object):
             self.client.createTable(table, cf)
 
         logging.basicConfig(level=logging.WARNING,
-                            filename='./log.txt',
+                            filename='./process.log',
                             filemode='w',
                             format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 
@@ -57,23 +59,6 @@ class HbaseControl(object):
         :return: 
         """
         self.transport.close()
-
-    def put(self, record):
-        """
-        向hbase中插入一条记录
-        :param record: 一条记录，格式为{'key':'','cf1:c1':'', 'cf2:c1':''}
-        :return:
-        """
-        assert isinstance(record, dict)
-        mutations = []
-        _id = str(record['data:_id'])
-        row_key = bytes(hashlib.md5(bytes(_id, encoding="utf-8")).hexdigest()[0:10] + ':' + _id, encoding="utf-8")
-        for item in record:
-            if item == 'data:_id':
-                continue
-            mutations.append(Hbase.Mutation(column=bytes(item, encoding="utf8"),
-                                            value=bytes(str(record[item]), encoding="utf8")))
-        self.client.mutateRow(self.table, row_key, mutations, {})
 
     def puts(self, records, sleep_time=60):
         """
@@ -93,16 +78,21 @@ class HbaseControl(object):
             for item in record:
                 if item == 'data:_id':
                     continue
-                # mutations.append(Hbase.Mutation(column=item, value=str(record[item])))
                 mutations.append(Hbase.Mutation(column=bytes(item, encoding="utf8"),
                                                 value=bytes(str(record[item]), encoding="utf8")))
             mutations_batch.append(Hbase.BatchMutation(row=row_key, mutations=mutations))
         try:
             self.client.mutateRows(self.table, mutations_batch, {})
             self.last_id = str(records[-1]['data:_id'])
-        except TTransport.TTransportException:
+            self.put_num += len(mutations_batch)
+            serialization_handler = open('./serialization.log', 'w')
+            print(self.last_id + ':' + str(self.put_num), file=serialization_handler)
+            serialization_handler.close()
+        except Exception:
             if sleep_time > self.max_sleep_time:
-                raise TTransport.TTransportException('TTransportException!')
+                logging.warning(traceback.format_exc())
+                raise Exception('尝试了多次，仍然失败')
+            logging.warning('Hbase Put失败，开始睡眠{0}后重试'.format(sleep_time/60))
             time.sleep(sleep_time)
             self.puts(records, sleep_time*2)
 

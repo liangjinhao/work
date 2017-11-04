@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from pymongo import MongoClient
-import logging
 
 
 class MongdbControl(object):
@@ -19,16 +18,10 @@ class MongdbControl(object):
         else:
             self.cursor = self.collection.find({'_id': {'$gt': start_id}}).sort('_id')
 
-        logging.basicConfig(level=logging.WARNING,
-                            filename='./log.txt',
-                            filemode='w',
-                            format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-
     def __del__(self):
         self.client.close()
 
     def yield_data(self):
-        # logging.warning('数据ID：' + self.id + '，读取数据条数：' + str(self.num))
         record = self.cursor.next()
         while record:
             new_record = {}

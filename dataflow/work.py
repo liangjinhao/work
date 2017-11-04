@@ -6,39 +6,44 @@ import logging
 import traceback
 
 
+def main_porcess(id, num):
+    hc = HbaseControl.HbaseControl(table=b'hb_charts', column_families=[b'data'], put_num=num)
+    mc = MongodbControl.MongdbControl('hb_charts', start_id=id)
+    records = []
+    count = 0
+    for i in mc.yield_data():
+        if count >= 500:
+            hc.puts(records)
+            records = []
+            count = 0
+            if hc.put_num % 10000 == 0:
+                print(time.ctime() + '  Hbase 已经写入{0}万条数据'.format(hc.put_num / 10000))
+                logging.warning('Hbase 已经写入{0}万条数据'.format(hc.put_num / 10000))
+        else:
+            records.append(i)
+            count += 1
+    return False
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.WARNING,
-                        filename='./serialization.log',
+                        filename='./process.log',
                         filemode='w',
                         format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-    f_log = open('./console.log', 'w+')
+    flag = True
+    while flag:
+        try:
+            flag = main_porcess(id=None, num=0)
+        except Exception as e:
+            logging.warning('==========-重启程序-==========')
+            logging.warning(traceback.format_exc())
+            logging.warning('==========+重启程序+==========')
+            print(time.ctime() + '==========-重启程序-==========')
+            traceback.print_exc()
+            print(time.ctime() + '==========-重启程序-==========')
+            with open('./serialization.log') as f:
+                for line in f:
+                    _id = line.strip().split(':')[0]
+                    _num = line.strip().split(':')[1]
+                    flag = main_porcess(_id, _num)
 
-    hc = HbaseControl.HbaseControl(table=b'hb_charts', column_families=[b'data'])
-    mc = MongodbControl.MongdbControl('hb_charts')
-    records = []
-    all_count = 0
-    count = 0
-    temp_time = time.time()
-    try:
-        for i in mc.yield_data():
-            if count >= 500:
-                # print('Get Mongo time: ', str(time.time() - temp_time))
-                put_time = time.time()
-                hc.puts(records)
-                # print('Put Hbase time: ', str(time.time() - put_time))
-                temp_time = time.time()
-                records = []
-                all_count += count
-                count = 0
-
-                if all_count % 10000 == 0:
-                    print(time.ctime() + '  已经处理{0}万条数据！！'.format(all_count / 10000))
-                    print(time.ctime() + '  已经处理{0}万条数据！！'.format(all_count / 10000), file=f_log)
-            else:
-                records.append(i)
-                count += 1
-    except Exception as e:
-        logging.warning(hc.last_id)
-        print(time.ctime() + '  ====出现异常！！====', file=f_log)
-        s = traceback.format_exc()
-        print(s, file=f_log)
