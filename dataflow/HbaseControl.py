@@ -96,5 +96,5 @@ class HbaseControl(object):
         json['id'] = records[-1][row_name]
         json['update'] = records[-1][log_column].strftime('%Y,%m,%d,%H,%M,%S')
         json['number'] = str(self.put_num)
-        f.write(json)
+        f.write(str(json))
         f.close()

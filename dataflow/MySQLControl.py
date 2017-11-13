@@ -22,7 +22,8 @@ class MySQLControl:
         self.connection = pymysql.connect(host=self.host, port=self.port, user=self.user, password=self.password,
                                           db=self.db, charset='utf8', cursorclass=pymysql.cursors.DictCursor)
 
-        self.page_size = 500  # 每次取数据的数量
+        self.page_size = 1000  # 每次取数据的数量
+        self.start_id = ''  # 每次取一轮数据时的启始id
 
         if start_time is None:
             sql = "SELECT * FROM " + self.db + "." + self.table + " ORDER BY update_at LIMIT 10;"
@@ -41,10 +42,11 @@ class MySQLControl:
         :return: 
         """
         while True:
-            sql = "SELECT * FROM " + self.db + "." + self.table + " WHERE update_at >= %s" + \
-                  " ORDER BY update_at LIMIT " + str(self.page_size) + ";"
+            sql = "SELECT * FROM " + self.db + "." + self.table + " WHERE update_at >= %s AND id > %s " + \
+                  " ORDER BY update_at, id LIMIT " + str(self.page_size) + ";"
             cursor = self.connection.cursor()
-            cursor.execute(sql, (self.start_time,))
+            cursor.execute(sql, (self.start_time, self.start_id))
             for row in cursor:
                 self.start_time = row['update_at']
+                self.start_id = row['id']
                 yield(row)
