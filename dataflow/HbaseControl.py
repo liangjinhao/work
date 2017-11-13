@@ -4,7 +4,7 @@ from hbase import Hbase
 from hbase.ttypes import *
 import hashlib
 import configparser
-import logging
+import time
 
 CONFIG_FILE = "path.conf"
 
@@ -34,7 +34,6 @@ class HbaseControl(object):
         self.client = Hbase.Client(self.protocol)
         self.transport.open()
 
-        self.last_id = ''
         self.put_num = put_num
 
         # set table and column families
@@ -48,11 +47,6 @@ class HbaseControl(object):
                 cf.append(name)
             self.client.createTable(table, cf)
 
-        logging.basicConfig(level=logging.WARNING,
-                            filename='./process.log',
-                            filemode='w',
-                            format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-
     def __del__(self):
         """
         销毁对象前关闭hbase链接
@@ -60,33 +54,47 @@ class HbaseControl(object):
         """
         self.transport.close()
 
-    def puts(self, records, key):
+    def puts(self, records, job_id):
         """
         hbase批量插入
         :param records: 多条条记录list，一条记录格式为{'_id':'','field1':'', 'field2':''}
-        :param key: 每条记录的唯一标识的字段名，对于 MongoDB 是 '_id', 对于 MySQL 是 'id'
+        :param job_id: 任务类型，比如 'mongodb:hb_charts'
         :return: 
         """
         assert isinstance(records, list)
+
+        row_name = ''  # 行的ID
+        log_column = ''  # 记下的列，比如 update_at 列
+        if job_id.split(':')[0] == 'mongodb':
+            row_name = '_id'
+            log_column = 'last_updated'
+        elif job_id.split(':')[0] == 'mysql':
+            row_name = 'id'
+            log_column = 'update_at'
 
         mutations_batch = []
         for record in records:
             mutations = []
             # row_key的值为 md5(_id)[0:10]:_id
-            _id = str(record[key])
+            _id = str(record[row_name])
             row_key = bytes(hashlib.md5(bytes(_id, encoding="utf-8")).hexdigest()[0:10] + ':' + _id, encoding="utf-8")
             for item in record:
-                if item == key:
+                if item == row_name:
                     continue
                 mutations.append(Hbase.Mutation(column=bytes('data:' + item, encoding="utf8"),
                                                 value=bytes(str(record[item]), encoding="utf8")))
             mutations_batch.append(Hbase.BatchMutation(row=row_key, mutations=mutations))
 
         self.client.mutateRows(self.table, mutations_batch, {})
-        self.last_id = str(records[-1])
-        self.put_num += len(mutations_batch)
-        serialization_handler = open('./serialization.log', 'w')
-        print(self.last_id, file=serialization_handler)
-        print(str(self.put_num), file=serialization_handler)
-        serialization_handler.close()
 
+        self.put_num += len(mutations_batch)
+
+        f = open(job_id + '.txt', 'w')
+        json = dict({'date': '', 'job_id': '', 'id': '', 'update': '', 'number': ''})
+        json['date'] = time.strftime('%Y-%m-%d %H:%M:%S')
+        json['job_id'] = job_id
+        json['id'] = records[-1][row_name]
+        json['update'] = records[-1][log_column].strftime('%Y,%m,%d,%H,%M,%S')
+        json['number'] = str(self.put_num)
+        f.write(json)
+        f.close()

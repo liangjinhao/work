@@ -11,8 +11,6 @@ class MongdbControl(object):
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
 
-        self.key = '_id'  # MongoDB数据库的每行唯一标识符的字段名
-
         url = conf.get("mongodb", "url")
         appname = conf.get("mongodb", "appname")
         db = conf.get("mongodb", "db")
@@ -25,7 +23,7 @@ class MongdbControl(object):
         if start_time is None:
             self.cursor = self.collection.find().sort('last_updated')
         else:
-            self.cursor = self.collection.find({'last_updated': {'$gt': start_time}}).sort('last_updated')
+            self.cursor = self.collection.find({'last_updated': {'$gte': start_time}}).sort('last_updated')
 
     def __del__(self):
         self.client.close()

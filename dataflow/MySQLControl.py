@@ -12,8 +12,6 @@ class MySQLControl:
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
 
-        self.key = 'id'  # MySQL数据库的每行唯一标识符的字段名
-
         self.host = conf.get("mysql", "host")
         self.port = int(conf.get("mysql", "port"))
         self.db = conf.get("mysql", "db")
@@ -43,13 +41,10 @@ class MySQLControl:
         :return: 
         """
         while True:
-            sql = "SELECT * FROM " + self.db + "." + self.table + " WHERE update_at > %s" + \
+            sql = "SELECT * FROM " + self.db + "." + self.table + " WHERE update_at >= %s" + \
                   " ORDER BY update_at LIMIT " + str(self.page_size) + ";"
             cursor = self.connection.cursor()
             cursor.execute(sql, (self.start_time,))
             for row in cursor:
+                self.start_time = row['update_at']
                 yield(row)
-
-# a = MySQLControl()
-# for i in a.yield_data():
-#     print(i)
