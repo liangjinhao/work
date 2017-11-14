@@ -7,7 +7,7 @@ CONFIG_FILE = "path.conf"
 
 class MySQLControl:
 
-    def __init__(self, start_time=None):
+    def __init__(self, start_time=None, start_id=None):
 
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
@@ -33,6 +33,11 @@ class MySQLControl:
         else:
             self.start_time = start_time
 
+        if start_id is None:
+            self.start_id = ''
+        else:
+            self.start_id = start_id
+
     def __del__(self):
         self.connection.close()
 
@@ -42,10 +47,11 @@ class MySQLControl:
         :return: 
         """
         while True:
-            sql = "SELECT * FROM " + self.db + "." + self.table + " WHERE update_at >= %s AND id > %s " + \
-                  " ORDER BY update_at, id LIMIT " + str(self.page_size) + ";"
+            sql = "SELECT * FROM " + self.db + "." + self.table + " WHERE (update_at = %s AND id > %s) " + \
+                  " OR (update_at > %s ) ORDER BY update_at, id LIMIT " + str(self.page_size) + ";"
             cursor = self.connection.cursor()
-            cursor.execute(sql, (self.start_time, self.start_id))
+            cursor.execute(sql, (self.start_time, self.start_id, self.start_time))
+            print(sql, (self.start_time, self.start_id, self.start_time))
             for row in cursor:
                 self.start_time = row['update_at']
                 self.start_id = row['id']

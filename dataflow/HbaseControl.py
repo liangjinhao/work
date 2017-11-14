@@ -94,7 +94,10 @@ class HbaseControl(object):
         json['date'] = time.strftime('%Y-%m-%d %H:%M:%S')
         json['job_id'] = job_id
         json['id'] = records[-1][row_name]
-        json['update'] = records[-1][log_column].strftime('%Y,%m,%d,%H,%M,%S')
+        if job_id.split(':')[0] == 'mongodb':
+            json['update'] = records[-1][log_column]
+        elif job_id.split(':')[0] == 'mysql':
+            json['update'] = records[-1][log_column].strftime('%Y-%m-%d %H:%M:%S')
         json['number'] = str(self.put_num)
         f.write(str(json))
         f.close()
