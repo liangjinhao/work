@@ -51,7 +51,6 @@ class MySQLControl:
                   " OR (update_at > %s ) ORDER BY update_at, id LIMIT " + str(self.page_size) + ";"
             cursor = self.connection.cursor()
             cursor.execute(sql, (self.start_time, self.start_id, self.start_time))
-            print(sql, (self.start_time, self.start_id, self.start_time))
             for row in cursor:
                 self.start_time = row['update_at']
                 self.start_id = row['id']

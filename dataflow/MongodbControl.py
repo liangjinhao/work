@@ -4,7 +4,7 @@ from pymongo import MongoClient
 CONFIG_FILE = "path.conf"
 
 
-class MongdbControl(object):
+class MongodbControl(object):
 
     def __init__(self, start_time=None):
 

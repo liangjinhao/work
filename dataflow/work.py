@@ -25,43 +25,38 @@ def get_last_progress(job_id):
 
 
 def main_porcess(job_id, start_time=None, start_id=None, num=0):
-    try:
-        job_type = job_id.split(':')[0]
-        origin = None
-        destination = None
-        if job_type == 'mongodb':
-            origin = MongodbControl.MongdbControl(start_time)
-            destination = HbaseControl.HbaseControl(table=b'hb_charts', column_families=[b'data'], put_num=num)
-        elif job_type == 'mysql':
-            origin = MySQLControl.MySQLControl(start_time, start_id)
-            destination = HbaseControl.HbaseControl(table=b'hibor', column_families=[b'data'], put_num=num)
+    job_type = job_id.split(':')[0]
+    origin = None
+    destination = None
+    if job_type == 'mongodb':
+        origin = MongodbControl.MongodbControl(start_time)
+        destination = HbaseControl.HbaseControl(table=b'hb_charts', column_families=[b'data'], put_num=num)
+    elif job_type == 'mysql':
+        origin = MySQLControl.MySQLControl(start_time, start_id)
+        destination = HbaseControl.HbaseControl(table=b'hibor', column_families=[b'data'], put_num=num)
 
-        records = []
-        count = 0
-        for i in origin.yield_data():
-            if count >= 1000:
-                destination.puts(records, job_id)
-                records = []
-                count = 0
-                if destination.put_num % 10000 == 0:
-                    print(job_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  Hbase 已经写入{0}万条数据'
-                          .format(destination.put_num / 10000))
-                    logging.warning(job_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  Hbase 已经写入{0}万条数据'
-                                    .format(destination.put_num / 10000))
-            else:
-                records.append(i)
-                count += 1
-        return True
-    except Exception:
-        logging.warning(job_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  ==========重启程序==========')
-        # logging.warning(traceback.format_exc())
-        print(job_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  ==========重启程序==========')
-        # traceback.print_exc()
-
-        last_info = get_last_progress(job_id)
-
-        main_porcess(last_info['job_id'], start_time=last_info['update'],
-                     start_id=last_info['id'], num=last_info['number'])
+    records = []
+    count = 0
+    label_time = time.time()
+    for i in origin.yield_data():
+        if count >= 1000:
+            destination.puts(records, job_id)
+            records = []
+            count = 0
+            if destination.put_num % 10000 == 0:
+                print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + job_id + '  Hbase 已经写入{0}万条数据'
+                      .format(destination.put_num / 10000))
+                logging.warning(job_id + '  Hbase 已经写入{0}万条数据'.format(destination.put_num / 10000))
+        else:
+            # 两分钟没有来数据，说明数据已经较少了，等一会儿再取
+            if (time.time() - label_time) > 60*2:
+                print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + job_id + '  所有数据处理更新到最新！等待5分钟后继续.')
+                logging.warning(job_id + '  所有数据处理完毕！！等待5分钟后继续.')
+                time.sleep(60*5)
+                label_time = time.time()
+            records.append(i)
+            count += 1
+    return True
 
 
 if __name__ == '__main__':
@@ -73,12 +68,11 @@ if __name__ == '__main__':
     work_id = 'mysql:hibor'
 
     while True:
-        last = get_last_progress(work_id)
-        flag = main_porcess(last['job_id'], start_time=last['update'], start_id=last['id'], num=last['number'])
 
-        if flag:
-            print(work_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  所有数据处理完毕！等待1小时后重新开始:')
-            print(get_last_progress(work_id))
-            logging.warning(work_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  所有数据处理完毕！等待1小时后重新开始:')
-            logging.warning(work_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  '+str(get_last_progress(work_id)))
-            time.sleep(60 * 60)
+        try:
+            last = get_last_progress(work_id)
+            main_porcess(last['job_id'], start_time=last['update'], start_id=last['id'], num=last['number'])
+        except Exception as e:
+            logging.warning(work_id + '  ==========重启程序==========')
+            logging.warning(str(e))
+            print(work_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  ==========重启程序==========')
