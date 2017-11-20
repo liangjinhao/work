@@ -510,6 +510,5 @@ class TermRank:
         f.write(test_text)
         f.close()
 
-
 # a = TermRank()
 # print(a.predict_query('万科上季度收入增长情况'))
