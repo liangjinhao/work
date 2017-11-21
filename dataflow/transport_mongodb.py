@@ -2,6 +2,7 @@ from threading import Thread
 import time
 import datetime
 import logging
+from logging.handlers import RotatingFileHandler
 import random
 from queue import Queue
 import MongodbControl
@@ -30,8 +31,8 @@ class MongodbProducerThread(Thread):
                     # time.sleep(random.random())
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb生产线程重新连接==========')
-                logging.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
-                logging.warning(str(ex))
+                logger.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
+                logger.warning(str(ex))
 
 
 class MongodbConsumerThread(Thread):
@@ -64,7 +65,7 @@ class MongodbConsumerThread(Thread):
                         # 2分钟没有来数据，说明数据已经较少了，等5分钟再取
                         if (time.time() - action_time) > 60 * 2:
                             print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待5分钟后继续.')
-                            logging.warning(self.job_id + '  数据更新到最新！待5分钟后继续.')
+                            logger.warning(self.job_id + '  数据更新到最新！待5分钟后继续.')
                             time.sleep(60 * 5)
                             action_time = time.time()
 
@@ -79,11 +80,11 @@ class MongodbConsumerThread(Thread):
                 if self.put_num % 10000 == 0:
                     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ' + '  Hbase 已经写入{0}万条数据'
                           .format(self.put_num / 10000))
-                    logging.warning(self.job_id + '  Hbase 已经写入{0}万条数据'.format(self.put_num / 10000))
+                    logger.warning(self.job_id + '  Hbase 已经写入{0}万条数据'.format(self.put_num / 10000))
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb消费线程重新连接==========')
-                logging.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
-                logging.warning(str(ex))
+                logger.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
+                logger.warning(str(ex))
 
 
 def get_last_progress(job_id):
@@ -103,10 +104,15 @@ def get_last_progress(job_id):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.WARNING,
-                        filename='./process.log',
-                        filemode='w',
-                        format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+
+    handle = RotatingFileHandler('./process_mongodb.log', maxBytes=5*1024*1024, backupCount=1)
+    handle.setLevel(logging.WARNING)
+    log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    handle.setFormatter(log_formater)
+
+    logger = logging.getLogger('Rotating log')
+    logger.addHandler(handle)
+    logger.setLevel(logging.WARNING)
 
     work_id = 'mongodb:hb_charts'
 
