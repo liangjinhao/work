@@ -3,6 +3,7 @@ import HbaseControl
 import MongodbControl
 import time
 import logging
+from logging.handlers import RotatingFileHandler
 import traceback
 import MySQLControl
 import datetime
@@ -46,12 +47,12 @@ def main_porcess(job_id, start_time=None, start_id=None, num=0):
             if destination.put_num % 10000 == 0:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + job_id + '  Hbase 已经写入{0}万条数据'
                       .format(destination.put_num / 10000))
-                logging.warning(job_id + '  Hbase 已经写入{0}万条数据'.format(destination.put_num / 10000))
+                logger.warning(job_id + '  Hbase 已经写入{0}万条数据'.format(destination.put_num / 10000))
         else:
             # 两分钟没有来数据，说明数据已经较少了，等一会儿再取
             if (time.time() - label_time) > 60*2:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + job_id + '  所有数据处理更新到最新！等待5分钟后继续.')
-                logging.warning(job_id + '  所有数据处理完毕！！等待5分钟后继续.')
+                logger.warning(job_id + '  所有数据处理完毕！！等待5分钟后继续.')
                 time.sleep(60*5)
                 label_time = time.time()
             records.append(i)
@@ -60,10 +61,14 @@ def main_porcess(job_id, start_time=None, start_id=None, num=0):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.WARNING,
-                        filename='./process.log',
-                        filemode='w',
-                        format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    handle = RotatingFileHandler('./process_mongodb.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+    handle.setLevel(logging.WARNING)
+    log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    handle.setFormatter(log_formater)
+
+    logger = logging.getLogger('Rotating log')
+    logger.addHandler(handle)
+    logger.setLevel(logging.WARNING)
 
     work_id = 'mysql:hibor'
 
@@ -73,6 +78,6 @@ if __name__ == '__main__':
             last = get_last_progress(work_id)
             main_porcess(last['job_id'], start_time=last['update'], start_id=last['id'], num=last['number'])
         except Exception as e:
-            logging.warning(work_id + '  ==========重启程序==========')
-            logging.warning(str(e))
+            logger.warning(work_id + '  ==========重启程序==========')
+            logger.warning(str(e))
             print(work_id + '  ' + time.strftime('%Y-%m-%d %H:%M:%S') + '  ==========重启程序==========')
