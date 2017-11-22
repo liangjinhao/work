@@ -42,6 +42,16 @@ class Collector:
         })
         final_result["title"] = sentence
 
+        # 处理term_weight
+        tr_res = self.term_rank.predict_query(sentence)
+        final_result["term_weight"] = tr_res["term_weight"]
+
+        # 处理data
+        crf_result = tr_res["data"]
+        for i in range(len(crf_result)):
+            var = crf_result[i]
+            final_result["data"].append({'term': var['term'], 'type': var['type']})
+
         # 处理brief
         brief = sentence
         match = self.ahocorasick.search(sentence)
@@ -53,19 +63,18 @@ class Collector:
                 if not re.search(u'(^|[^A-Za-z])' + res.group(0) + u'($|[^A-Za-z])', sentence):
                     continue
             brief = brief.replace(word, '')
+
+        for i in crf_result:
+            if i['type'] == 'useless':
+                brief = brief.replace(i['term'], '')
+            if i['type'] == 'time':
+                brief = brief.replace(i['term'], '')
+            if i['type'] == 'time':
+                brief = brief.replace(i['term'], '')
+
         final_result["brief"] = brief
-
-        # 处理term_weight
-        tr_res = self.term_rank.predict_query(sentence)
-        final_result["term_weight"] = tr_res["term_weight"]
-
-        # 处理data
-        crf_result = tr_res["data"]
-        for i in range(len(crf_result)):
-            var = crf_result[i]
-            final_result["data"].append({'term': var['term'], 'type': var['type']})
 
         return final_result
 
 # a = Collector()
-# print(a.collect('图表13:平安银行浦发银行国内生产总值'))
+# print(a.collect('图表13:过去三年平安银行浦发银行国内生产总值情况'))
