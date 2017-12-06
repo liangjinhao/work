@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 import HbaseControl
 import MongodbControl
 import time
 import logging
 from logging.handlers import RotatingFileHandler
-import traceback
 import MySQLControl
 import datetime
 

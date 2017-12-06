@@ -3,7 +3,6 @@ import time
 import datetime
 import logging
 from logging.handlers import RotatingFileHandler
-import random
 from queue import Queue
 import MySQLControl
 import HbaseControl
