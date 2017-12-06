@@ -50,7 +50,11 @@ class Collector:
         crf_result = tr_res["data"]
         for i in range(len(crf_result)):
             var = crf_result[i]
-            final_result["data"].append({'term': var['term'], 'type': var['type']})
+            # 英文的识别很差，先统一看成主体
+            if re.match(r'[a-zA-Z]+', var['term']):
+                final_result["data"].append({'term': var['term'], 'type': 'subject'})
+            else:
+                final_result["data"].append({'term': var['term'], 'type': var['type']})
 
         # 处理brief
         brief = sentence
