@@ -4,7 +4,9 @@ import ahocorasick
 class ACSearch:
 
     def __init__(self):
-        # 初始化AC自动机
+        """
+        初始化AC自动机
+        """
         self.ac_automaton = ahocorasick.Automaton()
         self.index = 0
 
@@ -59,10 +61,10 @@ class ACSearch:
                 if i != j:
                     set1 = set(range(i[1], i[2]))
                     set2 = set(range(j[1], j[2]))
-                    if set1|set2 == set1:
+                    if set1 | set2 == set1:
                         if j in all_items:
                             all_items.remove(j)
-                    elif set1|set2 == set2:
+                    elif set1 | set2 == set2:
                         if i in all_items:
                             all_items.remove(i)
         for i in all_items:
