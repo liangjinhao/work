@@ -5,6 +5,7 @@ import configparser
 import hanlp_segmentor
 import term_ranking
 import ac_search
+import time_extractor
 
 CONFIG_FILE = "path.conf"
 
@@ -25,6 +26,7 @@ class Collector:
         useless_dict_path = home_dir + conf.get("dictionary", "norm_useless")
         self.ahocorasick.add_dict(useless_dict_path)
         self.ahocorasick.start()
+        self.te = time_extractor.TimeExtractor()
 
     def collect(self, sentence):
         """
@@ -38,6 +40,7 @@ class Collector:
             "data": [],   # 原句子的CRF序列标注结果
             "title": "",  # 输入的原句子
             "brief": "",  # 句子的简要版本，即去掉句子里无用的一些字词等（这些无用字词由字典给出）
+            "years": "",  # 句子里包含的年份信息
             "term_weight": []  # 句子中各个词语的ranking
         })
         final_result["title"] = sentence
@@ -78,6 +81,8 @@ class Collector:
 
         final_result["brief"] = brief
 
+        # 处理时间
+        final_result['years'] = self.te.extract(sentence)
         return final_result
 
 # a = Collector()
