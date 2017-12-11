@@ -7,6 +7,9 @@ CONFIG_FILE = "path.conf"
 class HanlpSegmentor:
 
     def __init__(self):
+        """
+        启动JVM生产Hanlp实例
+        """
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
         class_path = conf.get("hanlp", "classpath")
@@ -15,6 +18,11 @@ class HanlpSegmentor:
         self.HanLP = JClass('com.hankcs.hanlp.HanLP')
 
     def get_segments(self, sentence):
+        """
+        对一个句子进行分词
+        :param sentence: 输入的句子
+        :return: 分词的结果（词和词性组成的元组的列表）
+        """
         res = list(self.HanLP.segment(sentence))
         result = []
         for item in res:
