@@ -1,6 +1,7 @@
 import os
 import inspect
 import configparser
+import re
 import CRFPP
 import hanlp_segmentor
 
@@ -23,23 +24,70 @@ class CRF:
 
         self.train_file_path = home_dir + conf.get("crf", "train_file")
         self.test_file_path = home_dir + conf.get("crf", "test_file")
-        self.predict_file_path = self.test_file_path + '_预测结果'
+        self.predict_file_path = self.test_file_path + '_predict'
 
         self.segmentor = hanlp_segmentor.HanlpSegmentor()
 
+    @staticmethod
+    def exam_crf_train_file(file_path):
+        """
+        检查CRF训练文件是否符合规范
+        :param file_path:
+        :return:
+        """
+
+        # 每行的格式
+        pattern_string = u'^[\S]{1,30}\t([\d]|[a-z]|(10))$'
+        pattern = re.compile(pattern_string)
+
+        i = 0
+        is_wrong = False
+        message = ''
+        with open(file_path, 'rU') as f:
+            for line in f:
+                i = i + 1
+                if line == '\n' or line == '\r\n':
+                    continue
+                if re.match(pattern, line):
+                    continue
+                else:
+                    is_wrong = True
+                    message += 'Line:' + str(i) + '\t' + line
+        if is_wrong:
+            print('文件：' + file_path + '存在格式错误,请查看：' + file_path + '_格式检测结果')
+            f_write = open(file_path + '_格式检测结果', 'w')
+            f_write.write(message)
+            f_write.close()
+
     def train(self):
+        """
+        训练CRF模型
+        :return:
+        """
+        # param:-m iter次数;-f使用的特征出现次数不能少于多少,默认是1;-c控制拟合，这个值比较大的时候容易过拟合,默认是1.
+        # 当上面不设置m参数的时候，模型会等待console输出的obj收敛于某个值的时候停止训练.
         cmd_command = 'crf_learn' + ' ' + self.template_file_path + ' ' + self.train_file_path + ' ' + \
                       self.model_file_path + ' -t'
         os.system(cmd_command)
 
+    def predict_file(self):
+        """
+        预测一个文件的标注结果，该文件的格式必须满足CRF++规定的格式
+        :return:
+        """
+        cmd_command = 'crf_test' + ' -m ' + self.model_file_path + ' ' + self.test_file_path + '>>' + \
+                      self.predict_file_path
+        os.system(cmd_command)
+
     def extract(self, sentence):
+        """
+        返回一个句子的CRF标注结果
+        :param sentence: 输入的句子
+        :return: 句子分词后各个词的词性，CRF标注结果
+        """
 
-        mappings = {'1': 'subject', '2': 'indicator', '3': 'time', '4': 'area', '5': 'formula', '6': 'frequency',
-                    '7': 'conjunction', 'a': 'main', 'b': 'minor', 'c': 'description', 'd': 'difinitive',
-                    'o': 'useless'}
-
-        # mappings = {1: 'subject', 2: 'industry', 3: 'stock_block', 4: 'indicator', 5: 'product', 6: 'area',
-        #             7: 'formula', 8: 'main', 9: 'minor', 10: 'time', 0: 'useless'}
+        mappings = {'1': 'subject1', '2': 'subject2', '3': 'subject3', '4': 'indicator', '5': 'product', '6': 'area',
+                    '7': 'formula', '8': 'useless', '9': 'time'}
 
         tagger = CRFPP.Tagger("-m " + self.model_file_path)
 
@@ -100,10 +148,6 @@ class CRF:
 
         return result
 
-    def predict_file(self):
-        cmd_command = 'crf_test' + ' -m ' + self.model_file_path + ' ' + self.train_file_path + '>>' + \
-                      self.predict_file_path
-        os.system(cmd_command)
 
 # a = CRF()
 # print(a.extract('去年万科每月收入'))
