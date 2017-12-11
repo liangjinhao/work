@@ -8,6 +8,7 @@ import numpy as np
 import math
 from sklearn.metrics import *
 import crf_plus as crf
+from collections import Counter
 from gensim.models import Word2Vec
 
 CONFIG_FILE = "path.conf"
@@ -17,13 +18,9 @@ class TermRank:
 
     def __init__(self):
 
-        # CRF预测的Tag 映射成离散值(0.0~1.0, 12个离散值)
-        self.tag_mapping = {'subject': 1.0, 'indicator': 0.8, 'time': 0.6, 'area': 0.7, 'formula': 0.5,
-                            'frequency': 0.55, 'conjunction': 0.0, 'main': 1.0, 'minor': 1.0, 'description': 0.2,
-                            'difinitive': 0.9, 'useless': 0.0}
-
-        # self.tag_mapping = {'subject': 1.0, 'industry': 0.95, 'stock_block': 0.9, 'indicator': 0.8, 'product': 1.0,
-        #                     'area': 0.7, 'formula': 0.2, 'main': 1.0, 'minor': 1.0, 'time': 0.6, 'useless': 0.0}
+        # CRF预测的Tag 映射成离散值(0.0~1.0)
+        self.tag_mapping = {'subject1': 1.0, 'subject2': 1.0, 'subject3': 1.0, 'indicator': 0.8, 'product': 0.9,
+                            'area': 0.7, 'formula': 0.4, 'useless': 0.0, 'time': 0.6}
 
         # hanlp pos词性 映射成离散值(0~9)
         self.pos_mapping = {'a': 2, 'ad': 2, 'ag': 4, 'al': 4, 'an': 3, 'b': 6, 'begin': 0, 'bg': 4, 'bl': 4, 'c': 1,
@@ -304,15 +301,25 @@ class TermRank:
                         continue
                     res, crf_res = self.get_sentence_features(sentence)
                     if len(res) != len(words):
-                        res, crf_res = self.get_sentence_features(' '.join(words))
-                        if len(res) != len(words):
-                            res = list(filter(lambda t: t[0] != ' ', res))
-                            if len(res) != len(words):
-                                scores = []
-                                words = []
-                                count = 0
-                                print('--分词与原标注分词不一样--', sentence)
-                                continue
+                        # 标注数据的分词（比较老旧）和hanlp的分词可能不一致，这种情况下使用hanlp的分词，采用多数表决策略决定hanlp的分词
+                        # 对应的score。比如标注数据的分词和打分是['万科':'2', '净':'1', '收入':'1']，hanlp的分词是['万科', '净收入']，
+                        # 那么此时按字的多数表决策略（'净','收','入'三个字都是'1'），hanlp的分词的打分是 ['万科':'2', '净收入':'1']
+                        characters_tag = []
+                        revised_scores = []
+                        revised_words = []
+                        offset = 0
+                        for i in range(len(words)):
+                            characters_tag.extend([scores[i]]*len(words[i]))
+                        for j in range(len(crf_res)):
+                            term = crf_res[j]['term']
+                            revised_words.append(term)
+                            revised_scores.append(Counter(characters_tag[offset:offset+len(term)]).most_common(1)[0][0])
+                            offset += len(term)
+                        print('--分词与原标注分词不一样--', sentence)
+                        print(words, revised_words)
+                        print(scores, revised_scores)
+                        scores = revised_scores
+                        words = revised_words
 
                     for i in range(len(res)):
                         new_line = scores[i]
