@@ -3,7 +3,8 @@
 
 ## 配置环境，安装相关库
 
-1. 首先安装 Python3.6, 确保GCC版本不低于4.8
+- 首先安装 Python3.6, 确保GCC版本不低于4.8.2
+
 ```
 # GCC升级到4.8.2，这个需要系统管理员来做
 $ wget http://gcc.skazkaforyou.com/releases/gcc-4.8.2/gcc-4.8.2.tar.gz
@@ -17,40 +18,46 @@ $ make
 $ make  install
 $ gcc -v
 ```
-2. 首先 pip 安装以下依赖的库
+
+- 使用 pip 安装以下依赖的库
+
 ```
 # 比如， sudo /usr/local/bin/pip3.6 install numpy
-JPype1
-gensim
-matplotlib
-numpy
-pandas
-pyahocorasick
-requests -
-scikit-learn
-scipy
-sklearn
-tensorflow
-tensorflow-tensorboard
-tornado
+pip install gensim
+pip install JPype1
+pip install matplotlib
+pip install numpy
+pip install pyahocorasick
+pip install pymongo
+pip install PyMySQL
+pip install pyspark
+pip install scikit-learn
+pip install scipy
+pip install thrift
+pip install tornado
 ```
-3. 然后安装XGboost和CRF++
+
+- 安装XGboost
+
 ```
-# install xgboost
 $ git clone --recursive https://github.com/dmlc/xgboost
 $ cd xgboost
 $ make -j4
 $ cd python-package
 $ sudo python setup.py install
+```
 
-# install CRF++
-$ tar -xvf CRF++-0.58.tar
+- 安装CRF++
+
+```
+$ tar -xvf CRF++-0.58.tar.gz
 $ ./configure 
 $ make
 $ sudo make install
+$ sudo ln -s /usr/local/lib/libcrfpp.so.* /usr/lib64/
 $ cd python
 $ python setup.py build 
-$ sudo python setup.py install
+$ sudo python setup.py install  # 这个是安装到系统默认python的site-packages下，如果你使用虚拟环境，请手动拷贝build目录下的文件过去
 ```
 
 ## GLIBC的问题：
