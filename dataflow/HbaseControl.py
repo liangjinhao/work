@@ -81,8 +81,15 @@ class HbaseControl(object):
             for item in record:
                 if item == row_name:
                     continue
-                mutations.append(Hbase.Mutation(column=bytes('data:' + item, encoding="utf8"),
-                                                value=bytes(str(record[item]), encoding="utf8")))
+
+                key = bytes('data:' + item, encoding="utf8")
+                var = bytes(str(record[item]), encoding="utf8")
+                # hbase.client.keyvalue.maxsize 默认是10M，超出这个值则设置为None
+                if len(var) < 10 * 1024 * 1024:
+                    mutations.append(Hbase.Mutation(column=key, value=var))
+                else:
+                    mutations.append(Hbase.Mutation(column=key, value=bytes(str(None), encoding="utf8")))
+
             mutations_batch.append(Hbase.BatchMutation(row=row_key, mutations=mutations))
 
         self.client.mutateRows(self.table, mutations_batch, {})
