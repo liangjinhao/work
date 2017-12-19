@@ -28,6 +28,12 @@ class Collector:
         self.ahocorasick.start()
         self.te = time_extractor.TimeExtractor()
 
+        weight_drop = home_dir + conf.get("dictionary", "weight_drop")
+        self.weight_drop = set()
+        with open(weight_drop) as f:
+            for line in f:
+                self.weight_drop.add(line.strip('\n'))
+
     def collect(self, sentence):
         """
         返回现有的 NLP 模块对某个句子的分析结果（Json格式）
@@ -45,8 +51,13 @@ class Collector:
         })
         final_result["title"] = sentence
 
-        # 处理term_weight
+        # 处理term_weight，对需要强制降权的词进行处理
         tr_res = self.term_rank.predict_query(sentence)
+        for i in range(len(tr_res["term_weight"])):
+            term = tr_res["term_weight"][i]['term']
+            if term in self.weight_drop and 'subject' in tr_res['data'][i]['type']:
+                tr_res["term_weight"][i]['weight'] = float(0.1)
+                tr_res['data'][i]['type'] = 'useless'
         final_result["term_weight"] = tr_res["term_weight"]
 
         # 处理data
@@ -83,7 +94,9 @@ class Collector:
 
         # 处理时间
         final_result['years'] = self.te.extract(sentence)
+        print(final_result)
         return final_result
 
+
 # a = Collector()
-# print(a.collect('图表13:过去三年平安银行浦发银行国内生产总值情况'))
+# print(a.collect('家电行业红杉资金收入情况'))
