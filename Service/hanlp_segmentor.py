@@ -17,16 +17,10 @@ class HanlpSegmentor:
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
         class_path = conf.get("hanlp", "classpath")
-        phrase = os.path.dirname(os.path.abspath(inspect.getsourcefile(lambda: 0))) + \
-                            conf.get("dictionary", "phrase")
+
         if not isJVMStarted():
             startJVM(getDefaultJVMPath(), "-Djava.class.path=" + class_path, "-Xms1g", "-Xmx1g")  # 启动JVM
         self.HanLP = JClass('com.hankcs.hanlp.HanLP')
-
-        self.phrase_dict = set()
-        with open(phrase) as f:
-            for line in f:
-                self.phrase_dict.add(line.strip('\n'))
 
     def get_segments(self, sentence):
         """
@@ -40,39 +34,7 @@ class HanlpSegmentor:
             word = item.word
             nature = java.lang.String.valueOf(item.nature)
             result.append((word, nature))
-        result = self.dict_merge(result)
         result = self.quotation_split(result)
-        return result
-
-    def dict_merge(self, segments_result):
-        """
-        按照字典里给出的词，将现有的分词结果进行合并，合并是正向最大合并。比如对于‘红杉 资本 回本率’这个分词结果，
-        如果字典里定义了‘红杉资本’和‘资本回本率’，则最终结果变成‘红杉资本 回本率’
-        :param segments_result:
-        :return:
-        """
-        result = []
-        head = 0
-        rear = len(segments_result)
-        for i in range(head, rear):
-            for j in range(rear-head):
-                temp_word = ''.join([x[0] for x in segments_result][head:rear])
-                temp_nature = []
-                [temp_nature.extend([x[1]] * len(x[0])) for x in segments_result[head:rear]]
-                if rear-head == 1:
-                    word = temp_word
-                    nature = Counter(temp_nature).most_common(1)[0][0]
-                    result.append((word, nature))
-                    head += (rear - head)
-                elif temp_word in self.phrase_dict:
-                    word = temp_word
-                    nature = Counter(temp_nature).most_common(1)[0][0]
-                    result.append((word, nature))
-                    head += (rear-head)
-                    break
-                rear -= 1
-
-            rear = len(segments_result)
         return result
 
     def quotation_split(self, segments_result):
@@ -120,4 +82,4 @@ class HanlpSegmentor:
         return ()
 
 # a = HanlpSegmentor()
-# print(a.get_segments(u'家电行业最近红杉资本回本率“万科商业”“”""'))
+# print(a.get_segments(u'网宿科技净利和营收对比'))
