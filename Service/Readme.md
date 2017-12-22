@@ -6,6 +6,19 @@
 - 首先安装 Python3.6, 确保GCC版本不低于4.8.2
 
 ```
+# 安装 Python3.6
+$ sudo apt-get install libbz2-dev
+$ yum groupinstall 'Development Tools'  # centos 环境
+$ yum install zlib-devel bzip2-devel openssl-devel ncurese-devel  # centos 环境
+
+$ wget https://www.python.org/ftp/python/3.6.1/Python-3.6.1.tgz
+$ tar -zxf Python-3.6.1.tgz
+$ cd Python-3.6.1
+$ ./configure
+$ make
+$ sudo make install
+
+
 # GCC升级到4.8.2，这个需要系统管理员来做
 $ wget http://gcc.skazkaforyou.com/releases/gcc-4.8.2/gcc-4.8.2.tar.gz
 $ tar -xvf gcc-4.8.2.tar.gz
