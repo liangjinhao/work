@@ -6,6 +6,7 @@ import hanlp_segmentor
 import term_ranking
 import ac_search
 import time_extractor
+from collections import Counter
 
 CONFIG_FILE = "path.conf"
 
@@ -34,6 +35,85 @@ class Collector:
             for line in f:
                 self.weight_drop.add(line.strip('\n'))
 
+        self.phrase_dict_path = home_dir + conf.get("dictionary", "phrase")
+        self.phrase_dict = dict()
+        self.reload_dict()
+
+    def reload_dict(self):
+        self.phrase_dict = dict()
+        with open(self.phrase_dict_path) as f:
+            for line in f:
+                if not line.startswith('#') and line != '\n':
+                    self.phrase_dict[line.strip('\n').split(' ')[0]] = line.strip('\n').split(' ')[1]
+
+    def dict_merge(self, arg):
+        """
+        按照字典里给出的词，将现有的分词结果进行合并，合并是正向最大合并。比如对于‘红杉 资本 回本率’这个分词结果，
+        如果字典里定义了‘红杉资本’和‘资本回本率’，则最终结果变成‘红杉资本 回本率’
+        :param arg:
+        :return:
+        """
+        crf_result = arg['data']
+        xgboost_result = arg['term_weight']
+        new_crf_result = []
+        new_xgboost_result = []
+        head = 0
+        rear = len(crf_result)
+        for i in range(head, rear):
+            for j in range(rear - head):
+                temp_word = ''.join([x['term'] for x in crf_result][head:rear])
+                temp_nature = []
+                [temp_nature.extend([x['pos']] * len(x['term'])) for x in crf_result[head:rear]]
+                temp_tag = []
+                [temp_tag.extend([x['type']] * len(x['term'])) for x in crf_result[head:rear]]
+                temp_weight = []
+                [temp_weight.extend([x['weight']] * len(x['term'])) for x in xgboost_result[head:rear]]
+                if rear - head == 1:
+                    word = temp_word
+                    nature = Counter(temp_nature).most_common(1)[0][0]
+                    if word in self.phrase_dict:
+                        tag = self.phrase_dict[word]
+                    else:
+                        tag = Counter(temp_tag).most_common(1)[0][0]
+                    sum_weight = 0
+                    for w in temp_weight:
+                        sum_weight += w
+                    if word in self.phrase_dict and tag == 'useless':
+                        weight = float(0.1)
+                    elif word in self.phrase_dict and tag.startswith('subject'):
+                        weight = float(2.0)
+                    else:
+                        weight = sum_weight / (rear - head)
+                    new_crf_result.append({'pos': nature, 'term': word, 'type': tag})
+                    new_xgboost_result.append({'term': word, 'weight': weight})
+                    head += (rear - head)
+                elif temp_word in self.phrase_dict:
+                    word = temp_word
+                    nature = Counter(temp_nature).most_common(1)[0][0]
+                    if word in self.phrase_dict:
+                        tag = self.phrase_dict[word]
+                    else:
+                        tag = Counter(temp_tag).most_common(1)[0][0]
+                    sum_weight = 0
+                    for w in temp_weight:
+                        sum_weight += w
+                    if tag == 'useless':
+                        weight = float(0.1)
+                    elif word in self.phrase_dict and tag.startswith('subject'):
+                        weight = float(2.0)
+                    else:
+                        weight = sum_weight / (rear - head)
+                    new_crf_result.append({'pos': nature, 'term': word, 'type': tag})
+                    new_xgboost_result.append({'term': word, 'weight': weight})
+                    head += (rear - head)
+                    break
+                rear -= 1
+
+            rear = len(crf_result)
+
+        result = {'data': new_crf_result, 'term_weight': new_xgboost_result}
+        return result
+
     def collect(self, sentence):
         """
         返回现有的 NLP 模块对某个句子的分析结果（Json格式）
@@ -51,13 +131,10 @@ class Collector:
         })
         final_result["title"] = sentence
 
-        # 处理term_weight，对需要强制降权的词进行处理
+        # 处理词典中调整的词的tag
         tr_res = self.term_rank.predict_query(sentence)
-        for i in range(len(tr_res["term_weight"])):
-            term = tr_res["term_weight"][i]['term']
-            if term in self.weight_drop and 'subject' in tr_res['data'][i]['type']:
-                tr_res["term_weight"][i]['weight'] = float(0.1)
-                tr_res['data'][i]['type'] = 'useless'
+        tr_res = self.dict_merge(tr_res)
+
         final_result["term_weight"] = tr_res["term_weight"]
 
         # 处理data
@@ -66,30 +143,16 @@ class Collector:
             var = crf_result[i]
             # 英文的识别很差，先统一看成主体
             if re.match(r'[a-zA-Z]+', var['term']):
+                crf_result[i]['type'] = 'subject1'
                 final_result["data"].append({'term': var['term'], 'type': 'subject'})
             else:
                 final_result["data"].append({'term': var['term'], 'type': var['type']})
 
         # 处理brief
-        brief = sentence
-        match = self.ahocorasick.search(sentence)
-        for i in range(len(match)):
-            word = match[i]
-            # 如果是英文，则不是字符匹配，要考虑英文中的空格（比如，如果字典里有'IT'，如果对英文进行直接的字符匹配，会把'MIT'这种词给处理掉）
-            res = re.match(u'([a-zA-Z-/\\\]+[ ]*)*[a-zA-Z-/\\\]+', word)
-            if res:
-                if not re.search(u'(^|[^A-Za-z])' + res.group(0) + u'($|[^A-Za-z])', sentence):
-                    continue
-            brief = brief.replace(word, '')
-
-        for i in crf_result:
-            if i['type'] == 'useless':
-                brief = brief.replace(i['term'], '')
-            if i['type'] == 'time':
-                brief = brief.replace(i['term'], '')
-            if i['type'] == 'time':
-                brief = brief.replace(i['term'], '')
-
+        brief = ''
+        for i in range(len(crf_result)):
+            if crf_result[i]['term'] not in self.phrase_dict:
+                brief += crf_result[i]['term']
         final_result["brief"] = brief
 
         # 处理时间
@@ -99,4 +162,4 @@ class Collector:
 
 
 # a = Collector()
-# print(a.collect('家电行业红杉资金收入情况'))
+# a.collect('ofo摩拜新增用户量走势')
