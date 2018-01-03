@@ -2,13 +2,31 @@ import configparser
 from jpype import *
 import re
 from collections import Counter
-import os
-import inspect
+import threading
 
 CONFIG_FILE = "path.conf"
 
 
-class HanlpSegmentor:
+class Singleton(type):
+
+    _instances = dict()
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+
+        if cls not in cls._instances:
+            with cls._lock:
+                if cls not in cls._instances:
+                    cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        else:
+            with cls._lock:
+                if cls in cls._instances:
+                    cls._instances[cls].__init__(*args, **kwargs)
+
+        return cls._instances[cls]
+
+
+class HanlpSegmentor(metaclass=Singleton):
 
     def __init__(self):
         """
@@ -21,6 +39,14 @@ class HanlpSegmentor:
         if not isJVMStarted():
             startJVM(getDefaultJVMPath(), "-Djava.class.path=" + class_path, "-Xms1g", "-Xmx1g")  # 启动JVM
         self.HanLP = JClass('com.hankcs.hanlp.HanLP')
+        self.CustomDictionry = JClass('com.hankcs.hanlp.dictionary.CustomDictionary')
+
+    def reload_custom_dictionry(self):
+        """
+        重新加载自定义字典
+        :return:
+        """
+        self.CustomDictionry.reload()
 
     def get_segments(self, sentence):
         """
@@ -80,6 +106,3 @@ class HanlpSegmentor:
             if i[0] <= range_one[0] and range_one[1] <= i[1]:
                 return i
         return ()
-
-# a = HanlpSegmentor()
-# print(a.get_segments(u'网宿科技净利和营收对比'))
