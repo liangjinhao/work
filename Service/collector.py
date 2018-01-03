@@ -44,7 +44,7 @@ class Collector:
         with open(self.phrase_dict_path) as f:
             for line in f:
                 if not line.startswith('#') and line != '\n':
-                    self.phrase_dict[line.strip('\n').split(' ')[0]] = line.strip('\n').split(' ')[1]
+                    self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
 
     def dict_merge(self, arg):
         """
