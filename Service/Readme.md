@@ -1,6 +1,18 @@
 # Readme
 此文档使用Markdown语法编写，为了更好的阅读效果，可以使用相关Markdown阅读器
 
+## CRF 标注规范：
+
+1:主体1－具体的公司、股票、证券名，如美团、万科A、西南证券等；
+2:主体2－行业板块名，如采掘行业、金融行业、板块等；
+3:主体3－非1和2类型的，比如公司、沪深300、创业板、A股、B股等
+4:指标：主要是金融指标，如流通市值、净资产收益率、每股净资产增长率等；
+5:产品：如农产品、化工产品、金属非金属产品、化纤产品、有机产品、期货产品等；
+6:国家地区：国家主要是中国、美国、欧洲；地区主要针对国内：大范围可分为长三角、珠三角等；小范围具体到省市自治区直辖市；
+7:公式：同比、环比、增速、降速，跌速；
+8:无用
+9:日期
+
 ## 配置环境，安装相关库
 
 - 首先安装 Python3.6, 确保GCC版本不低于4.8.2
@@ -48,6 +60,8 @@ pip install scikit-learn
 pip install scipy
 pip install thrift
 pip install tornado
+pip install watchdog
+pip install apscheduler
 ```
 
 - 安装XGboost
@@ -195,15 +209,7 @@ GLIBCXX_FORCE_NEW
 GLIBCXX_DEBUG_MESSAGE_LENGTH
 ```
 
-## 已经部署的机器
-|机器|IP|说明|
-|-|-|-|
-|bj-wh-service005|121.40.79.122|使用的是CRF++，xgboost训练的模型有word2vec，训练模型使用的分词是原始的hanlp|
-
 ## 启动
 ```
 sudo nohup /usr/local/bin/python3.6 service.py --port=1999 --log_file_prefix=tornado_1999.log&
 ```
-
-
-
