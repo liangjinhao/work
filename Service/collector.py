@@ -5,7 +5,7 @@ import configparser
 import hanlp_segmentor
 import term_ranking
 import ac_search
-import time_extractor
+import abc_time
 from collections import Counter
 
 CONFIG_FILE = "path.conf"
@@ -27,7 +27,7 @@ class Collector:
         useless_dict_path = home_dir + conf.get("dictionary", "norm_useless")
         self.ahocorasick.add_dict(useless_dict_path)
         self.ahocorasick.start()
-        self.te = time_extractor.TimeExtractor()
+        self.te = abc_time.ABCYear()
 
         weight_drop = home_dir + conf.get("dictionary", "weight_drop")
         self.weight_drop = set()
@@ -156,7 +156,7 @@ class Collector:
         final_result["brief"] = brief
 
         # 处理时间
-        final_result['years'] = self.te.extract(sentence)
+        final_result['years'] = self.te.extract_regex(sentence)
         print(final_result)
         return final_result
 
