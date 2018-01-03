@@ -8,6 +8,8 @@ import threading
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import collector
+import update_dic
+import hanlp_segmentor
 
 tornado.options.define('port', default=8888, help='run on this port', type=int)
 tornado.options.define("log_file_prefix", default='tornado_8888.log')
@@ -32,13 +34,13 @@ class MainHandler(tornado.web.RequestHandler):
         for i in range(len(texts)):
             # 清洗数据
             text = texts[i]
-            if len(text) < 120:  # image_title长度一般不超过120
+            if 0 < len(text) < 120:  # image_title长度一般不超过120
                 lock.acquire()
                 final_dict = collector_service.collect(text)
                 lock.release()
                 final_result.append(final_dict)
             else:
-                final_result.append('{}')
+                continue
         final_json = json.dumps(final_result, ensure_ascii=False)
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
@@ -53,7 +55,10 @@ class MainHandler(tornado.web.RequestHandler):
         self.get()
 
 
-class MyThread(threading.Thread):
+class WatchFileThread(threading.Thread):
+    """
+    监测文件改变的线程
+    """
 
     def run(self):
         event_handler = MyHandler()
@@ -72,11 +77,14 @@ class MyThread(threading.Thread):
 class MyHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
-        # /dict/phrase 被修改
+        # /dict/phrase 被修改，重新加载词典
         if event.key[0] == 'modified' and event.key[1].split(r'/')[-1] == 'phrase' and event.key[2] is False:
             lock.acquire()
             collector_service.reload_dict()
             lock.release()
+        # /hanlp.properties 被修改，重新加载Hanlp分词词典
+        if event.key[0] == 'modified' and 'hanlp' in event.key[1] and event.key[2] is False:
+            hanlp_segmentor.HanlpSegmentor().reload_custom_dictionry()
 
 
 if __name__ == "__main__":
@@ -84,8 +92,11 @@ if __name__ == "__main__":
 
     lock = threading.Lock()
 
-    t = MyThread()
+    t = WatchFileThread()
     t.start()
+
+    t_d = update_dic.UpdateDictThread()
+    t_d.start()
 
     settings = {
         'template_path': 'views',  # html文件
