@@ -7,7 +7,7 @@ from queue import Queue
 import MongodbControl
 import HbaseControl
 
-buffer_size = 5000
+buffer_size = 50000
 mongodb_queue = Queue(buffer_size)
 
 
@@ -20,18 +20,19 @@ class MongodbProducerThread(Thread):
 
     def run(self):
         global mongodb_queue
-
+        mongodb = MongodbControl.MongodbControl(self.start_time)
         while True:
             try:
-                mongodb = MongodbControl.MongodbControl(self.start_time)
                 for i in mongodb.yield_data():
                     mongodb_queue.put(i)
                     self.start_time = i['last_updated']
-                    # time.sleep(random.random())
+                time.sleep(60)
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb生产线程重新连接==========')
                 logger.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
                 logger.warning(str(ex))
+                time.sleep(60)
+                mongodb = MongodbControl.MongodbControl(self.start_time)
 
 
 class MongodbConsumerThread(Thread):
@@ -54,27 +55,24 @@ class MongodbConsumerThread(Thread):
 
     def run(self):
         global mongodb_queue
+        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
         while True:
             try:
-                hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
-                action_time = time.time()
                 if len(self.records) < self.records_size:
                     for i in range(len(self.records), self.records_size):
+                        try:
+                            # 两分钟仍没有数据就抛出异常，并等待10分钟
+                            record = mongodb_queue.get(timeout=60*2)
+                            mongodb_queue.task_done()
+                            self.records.append(record)
+                        except Exception:
+                            print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待10分钟后继续.')
+                            logger.warning(self.job_id + '  数据更新到最新！待10分钟后继续.')
+                            time.sleep(60 * 10)
 
-                        # 2分钟没有来数据，说明数据已经较少了，等5分钟再取
-                        if (time.time() - action_time) > 60 * 2:
-                            print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待5分钟后继续.')
-                            logger.warning(self.job_id + '  数据更新到最新！待5分钟后继续.')
-                            time.sleep(60 * 5)
-                            action_time = time.time()
-
-                        record = mongodb_queue.get()
-                        mongodb_queue.task_done()
-                        self.records.append(record)
                 hbase.puts(self.records, self.job_id)
                 self.put_num += len(self.records)
                 self.records = []
-                # time.sleep(random.random())
 
                 if self.put_num % 10000 == 0:
                     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ' + '  Hbase 已经写入{0}万条数据'
@@ -84,6 +82,8 @@ class MongodbConsumerThread(Thread):
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb消费线程重新连接==========')
                 logger.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
                 logger.warning(str(ex))
+                time.sleep(60)
+                hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
 
 
 def get_last_progress(job_id):
