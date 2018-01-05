@@ -30,7 +30,7 @@ class HBaseUtils:
         :param attributes: 是否对比时间过滤数据
         :return: 函数返回list格式的数据，每一个list成员为读取Hbase的result
         """
-        if isinstance(table_name, str):
+        if not isinstance(table_name, bytes):
             table_name = bytes(table_name, encoding='utf-8')
 
         # 定义读取的连个参数。读取的key上界和下届
@@ -45,30 +45,30 @@ class HBaseUtils:
         transport.open()
 
         scan = TScan()
-        scan.filterString = "SingleColumnValueFilter('{cf}', '{col}', {opt}, 'binary:{val}', true, true)".format(
-            cf='data', col='', opt="<=", val=str(datetime.datetime.now()))
-        scanner = client.scannerOpenWithScan(table_name, scan, None)
-        client.scannerGet(scanner)
+        # scan.filterString = bytes("SingleColumnValueFilter('{cf}', '{col}', {opt}, 'binary:{val}', true, true)".format(
+        #     cf='data', col='', opt="<=", val=str(datetime.datetime.now())), encoding='utf-8')
+        # scanner = client.scannerOpenWithScan(table_name, scan, None)
+        # client.scannerGet(scanner)
 
         # 定义扫描的 scanner_id
         scanner_id = client.scannerOpenWithStop(table_name, start_key, end_key, col_names, attributes)
 
         data_list = []
-        result = client.scannerGet(scanner_id)
-        while result:
-
-            # 只读取需要的数据列
-            if attributes:
-                print(result)
-                if b'last_updated' in result and b'years_update_time' in result:
-                    if result[b'last_updated'] == result[b'years_update_time']:
-                        continue
-
-            data_list += result
-            result = client.scannerGet(scanner_id)
+        # result = client.scannerGet(scanner_id)
+        # while result:
+        #
+        #     # 只读取需要的数据列
+        #     if attributes:
+        #         print(result)
+        #         if b'last_updated' in result and b'years_update_time' in result:
+        #             if result[b'last_updated'] == result[b'years_update_time']:
+        #                 continue
+        #
+        #     data_list += result
+        #     result = client.scannerGet(scanner_id)
 
         # 下行为仅读取10条的测试代码（正式运行时须注释掉）
-        # data_list += client.scannerGetList(scanner_id, 10)
+        data_list += client.scannerGetList(scanner_id, 10)
 
         transport.close()
 
@@ -85,9 +85,9 @@ class HBaseUtils:
         dic = {}
         keys = result_data.columns.keys()
         # 特殊的，单独提取rowKey
-        dic[b'rowKey'] = result_data.row
+        dic['rowKey'] = str(result_data.row, encoding='utf-8')
         for key in keys:
-            dic[key] = result_data.columns[key].value
+            dic[str(key, encoding='utf-8')] = str(result_data.columns[key].value, encoding='utf-8')
         return dic
 
     @staticmethod
@@ -104,7 +104,7 @@ class HBaseUtils:
         :return: 每一行对应的缓冲变量的索引编号
         """
         print("start putDataAsPartition")
-        if isinstance(table_name, str):
+        if not isinstance(table_name, bytes):
             table_name = bytes(table_name, encoding='utf-8')
         col_names = HBaseUtils().str_list_to_bytes_list(col_names)
 
