@@ -91,6 +91,31 @@ class MyEmail:
         my_email.send()
 
 
+def tail(f, lines=1, _buffer=4098):
+    """Tail a file and get X lines from the end"""
+    # place holder for the lines found
+    lines_found = []
+
+    # block counter will be multiplied by buffer
+    # to get the block size from the end
+    block_counter = -1
+
+    # loop until we find X lines
+    while len(lines_found) < lines:
+        try:
+            f.seek(block_counter * _buffer, os.SEEK_END)
+        except IOError:  # either file is too small, or too many lines requested
+            f.seek(0)
+            lines_found = f.readlines()
+            break
+
+        lines_found = f.readlines()
+
+        block_counter -= 1
+
+    return lines_found[-lines:]
+
+
 def general_report():
     mongo = MongodbControl.MongodbControl()
     mongo_count = mongo.collection.find().count()
@@ -105,10 +130,16 @@ def general_report():
     mysql_count = cursor.fetchone()['count(*)']
     cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at LIMIT 1;')
     mysql_update = str(cursor.fetchone()['update_at'])
-
     with open('mongodb:hibor.txt') as f:
         mysql_transfer_update = eval(f.readlines()[0])['update']
         mysql_transfer_datetime = eval(f.readlines()[0])['date']
+
+    with open('process_mongodb.log') as f1:
+        last_lines = tail(f1, 10)
+        process_mongodb = '\n'.join(last_lines)
+    with open('process_mysql.log') as f2:
+        last_lines = tail(f2, 10)
+        process_mysql = '\n'.join(last_lines)
 
     message = '-----MongoDB-----\n' \
               '数据库数据量：{}\n' \
@@ -119,9 +150,14 @@ def general_report():
               '数据库数据量：{}\n' \
               '数据库最新时：{}\n' \
               '推送进度时间：{}\n' \
-              '最后推送时间：{}\n'\
+              '最后推送时间：{}\n' \
+              '-----Mongo.log-----\n' \
+              '{}' \
+              '-----MySQL.log-----\n' \
+              '{}' \
         .format(mongo_count, mongo_update, mongo_transfer_update, mongo_transfer_datetime,
-                mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime )
+                mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime,
+                process_mongodb, process_mysql)
 
     email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
     email.set_subject('服务器情况报告')
@@ -157,35 +193,24 @@ class NotifyThread(threading.Thread):
 
         # 一旦出现异常则实时报告
         while True:
+            flag = False
             with open('process_mongodb.log') as f1:
-                last_lines = self.tail(f1, 1)
+                last_lines = tail(f1, 1)
             for line in last_lines:
                 if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
-                    general_report()
+                    flag = True
                     break
+            with open('process_mysql.log') as f2:
+                last_lines = tail(f2, 1)
+            for line in last_lines:
+                if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
+                    flag = True
+                    break
+            if flag:
+                general_report()
             time.sleep(60*60)
 
-    @ staticmethod
-    def tail(f, lines=1, _buffer=4098):
-        """Tail a file and get X lines from the end"""
-        # place holder for the lines found
-        lines_found = []
 
-        # block counter will be multiplied by buffer
-        # to get the block size from the end
-        block_counter = -1
-
-        # loop until we find X lines
-        while len(lines_found) < lines:
-            try:
-                f.seek(block_counter * _buffer, os.SEEK_END)
-            except IOError:  # either file is too small, or too many lines requested
-                f.seek(0)
-                lines_found = f.readlines()
-                break
-
-            lines_found = f.readlines()
-
-            block_counter -= 1
-
-        return lines_found[-lines:]
+def demo():
+    a = NotifyThread()
+    a.start()
