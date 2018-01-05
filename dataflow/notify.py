@@ -91,6 +91,56 @@ class MyEmail:
         my_email.send()
 
 
+def general_report():
+    mongo = MongodbControl.MongodbControl()
+    mongo_count = mongo.collection.find().count()
+    mongo_update = str(mongo.collection.find().sort('last_updated').limit(1).next()['last_updated'])
+    with open('mongodb:hb_charts.txt') as f:
+        mongo_transfer_update = eval(f.readlines()[0])['update']
+        mongo_transfer_datetime = eval(f.readlines()[0])['date']
+
+    sql = MySQLControl.MySQLControl()
+    cursor = sql.connection.cursor()
+    cursor.execute('select count(*) from core_doc.hibor')
+    mysql_count = cursor.fetchone()['count(*)']
+    cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at LIMIT 1;')
+    mysql_update = str(cursor.fetchone()['update_at'])
+
+    with open('mongodb:hibor.txt') as f:
+        mysql_transfer_update = eval(f.readlines()[0])['update']
+        mysql_transfer_datetime = eval(f.readlines()[0])['date']
+
+    message = '-----MongoDB-----\n' \
+              '数据库数据量：{}\n' \
+              '数据库最新时：{}\n' \
+              '推送进度时间：{}\n' \
+              '最后推送时间：{}\n' \
+              '-----MySQL-----\n' \
+              '数据库数据量：{}\n' \
+              '数据库最新时：{}\n' \
+              '推送进度时间：{}\n' \
+              '最后推送时间：{}\n'\
+        .format(mongo_count, mongo_update, mongo_transfer_update, mongo_transfer_datetime,
+                mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime )
+
+    email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
+    email.set_subject('服务器情况报告')
+    email.set_bodytext(message)
+    email.send()
+
+
+class DailyReportThread(threading.Thread):
+    """
+    用于每天产生报告消息
+    """
+
+    def run(self):
+        sched = BlockingScheduler()
+        # 在每天凌晨 12：00 更新本地字典
+        sched.add_job(general_report, 'cron', hour=12, minute=0)
+        sched.start()
+
+
 class NotifyThread(threading.Thread):
 
     """
@@ -98,50 +148,12 @@ class NotifyThread(threading.Thread):
     """
 
     def run(self):
-        time.sleep(10*60)
 
         # 每天12:00发送一个总结性的报告
-        def general_report():
-            mongo = MongodbControl.MongodbControl()
-            mongo_count = mongo.collection.find().count()
-            mongo_update = str(mongo.collection.find().sort('last_updated').limit(1).next()['last_updated'])
-            with open('mongodb:hb_charts.txt') as f:
-                mongo_transfer_update = eval(f.readlines()[0])['update']
-                mongo_transfer_datetime = eval(f.readlines()[0])['date']
+        t = DailyReportThread()
+        t.start()
 
-            sql = MySQLControl.MySQLControl()
-            cursor = sql.connection.cursor()
-            cursor.execute('select count(*) from core_doc.hibor')
-            mysql_count = cursor.fetchone()['count(*)']
-            cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at LIMIT 1;')
-            mysql_update = str(cursor.fetchone()['update_at'])
-
-            with open('mongodb:hibor.txt') as f:
-                mysql_transfer_update = eval(f.readlines()[0])['update']
-                mysql_transfer_datetime = eval(f.readlines()[0])['date']
-
-            message = '-----MongoDB-----\n' \
-                      '数据库数据量：{}\n' \
-                      '数据库最新时：{}\n' \
-                      '推送进度时间：{}\n' \
-                      '最后推送时间：{}\n' \
-                      '-----MySQL-----\n' \
-                      '数据库数据量：{}\n' \
-                      '数据库最新时：{}\n' \
-                      '推送进度时间：{}\n' \
-                      '最后推送时间：{}\n'\
-                .format(mongo_count, mongo_update, mongo_transfer_update, mongo_transfer_datetime,
-                        mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime )
-
-            email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
-            email.set_subject('服务器情况报告')
-            email.set_bodytext(message)
-            email.send()
-
-        sched = BlockingScheduler()
-        # 在每天凌晨 12：00 更新本地字典
-        sched.add_job(general_report, 'cron', hour=12, minute=0)
-        sched.start()
+        time.sleep(10 * 60)
 
         # 一旦出现异常则实时报告
         while True:
