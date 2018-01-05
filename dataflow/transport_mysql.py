@@ -6,6 +6,7 @@ from logging.handlers import RotatingFileHandler
 from queue import Queue
 import MySQLControl
 import HbaseControl
+import notify
 
 buffer_size = 50000
 mysql_queue = Queue(buffer_size)
@@ -114,6 +115,9 @@ if __name__ == '__main__':
     logger = logging.getLogger('Rotating log')
     logger.addHandler(handle)
     logger.setLevel(logging.WARNING)
+
+    t = notify.NotifyThread()
+    t.start()
 
     work_id = 'mysql:hibor'
 
