@@ -20,7 +20,7 @@ class UpdateDict:
     def __init__(self):
 
         # 存放词典的SQL数据库相关配置
-        self.host = '120.26.12.152'
+        self.host = '114.55.108.136'
         self.port = 3306
         self.db = 'search_word'
         self.table = 'dict_classification'
@@ -106,5 +106,5 @@ class UpdateDictThread(threading.Thread):
         f = UpdateDict()
         sched = BlockingScheduler()
         # 在每天凌晨 12：00 更新本地字典
-        sched.add_job(f.run, 'cron', hour=16, minute=38)
+        sched.add_job(f.run, 'cron', hour=12, minute=0)
         sched.start()
