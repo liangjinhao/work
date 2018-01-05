@@ -7,7 +7,7 @@ from queue import Queue
 import MySQLControl
 import HbaseControl
 
-buffer_size = 5000
+buffer_size = 50000
 mysql_queue = Queue(buffer_size)
 
 
@@ -21,19 +21,20 @@ class MySQLProducerThread(Thread):
 
     def run(self):
         global mysql_queue
-
+        mysql = MySQLControl.MySQLControl(self.start_time, self.start_id)
         while True:
             try:
-                mysql = MySQLControl.MySQLControl(self.start_time, self.start_id)
                 for i in mysql.yield_data():
                     mysql_queue.put(i)
                     self.start_time = i['update_at']
                     self.start_id = i['id']
-                    # time.sleep(random.random())
+                time.sleep(60)
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mysql生产线程重新连接==========')
                 logger.warning(self.job_id + '  ==========mysql生产线程重新连接==========')
                 logger.warning(str(ex))
+                time.sleep(60)
+                mysql = MySQLControl.MySQLControl(self.start_time, self.start_id)
 
 
 class MySQLConsumerThread(Thread):
@@ -56,27 +57,24 @@ class MySQLConsumerThread(Thread):
 
     def run(self):
         global mysql_queue
+        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
         while True:
             try:
-                hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
-                action_time = time.time()
                 if len(self.records) < self.records_size:
                     for i in range(len(self.records), self.records_size):
+                        try:
+                            # 两分钟仍没有数据就抛出异常，并等待10分钟
+                            record = mysql_queue.get(timeout=60 * 2)
+                            mysql_queue.task_done()
+                            self.records.append(record)
+                        except Exception:
+                            print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待10分钟后继续.')
+                            logger.warning(self.job_id + '  数据更新到最新！待10分钟后继续.')
+                            time.sleep(60 * 10)
 
-                        # 2分钟没有来数据，说明数据已经较少了，等5分钟再取
-                        if (time.time() - action_time) > 60 * 2:
-                            print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待5分钟后继续.')
-                            logger.warning(self.job_id + '  数据更新到最新！待5分钟后继续.')
-                            time.sleep(60 * 5)
-                            action_time = time.time()
-
-                        record = mysql_queue.get()
-                        mysql_queue.task_done()
-                        self.records.append(record)
                 hbase.puts(self.records, self.job_id)
                 self.put_num += len(self.records)
                 self.records = []
-                # time.sleep(random.random())
 
                 if self.put_num % 10000 == 0:
                     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  Hbase 已经写入{0}万条数据'
@@ -86,6 +84,8 @@ class MySQLConsumerThread(Thread):
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mysql消费线程重新连接==========')
                 logger.warning(self.job_id + '  ==========mysql消费线程重新连接==========')
                 logger.warning(str(ex))
+                time.sleep(60)
+                hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
 
 
 def get_last_progress(job_id):
