@@ -22,21 +22,22 @@ class MongodbControl(object):
         self.db = self.client[db_name]
         self.db.authenticate(user, password)
         self.collection = self.db[table]
-        self.page_size = 1000
-
-        if start_time is None:
-            self.cursor = self.collection.find().sort('last_updated')
-        else:
-            self.cursor = self.collection.find({'last_updated': {'$gte': start_time}}).sort('last_updated')
+        self.start_time = start_time
 
     def __del__(self):
         self.client.close()
 
     def yield_data(self):
-        record = self.cursor.next()
+
+        if self.start_time is None:
+            cursor = self.collection.find().sort('last_updated')
+        else:
+            cursor = self.collection.find({'last_updated': {'$gte': self.start_time}}).sort('last_updated')
+
+        record = cursor.next()
         while record:
             new_record = {}
             for i in record.keys():
                 new_record[i] = str(record[i])
-            record = self.cursor.next()
+            record = cursor.next()
             yield new_record
