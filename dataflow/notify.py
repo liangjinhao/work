@@ -124,8 +124,9 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     with file_hbcharts_lock:
         with FileLock('mongodb:hb_charts.txt'):
             with open('mongodb:hb_charts.txt') as f:
-                mongo_transfer_update = eval(f.readlines()[0])['update']
-                mongo_transfer_datetime = eval(f.readlines()[0])['date']
+                line = f.readlines()[0]
+                mongo_transfer_update = eval(line)['update']
+                mongo_transfer_datetime = eval(line)['date']
 
     sql = MySQLControl.MySQLControl()
     cursor = sql.connection.cursor()
@@ -136,8 +137,9 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     with file_hbcharts_lock:
         with FileLock('mongodb:hibor.txt'):
             with open('mongodb:hibor.txt') as f:
-                mysql_transfer_update = eval(f.readlines()[0])['update']
-                mysql_transfer_datetime = eval(f.readlines()[0])['date']
+                line = f.readlines()[0]
+                mysql_transfer_update = eval(line)['update']
+                mysql_transfer_datetime = eval(line)['date']
 
     with log_hbcharts_lock:
         with open('process_mongodb.log') as f1:
@@ -191,6 +193,10 @@ class DailyReportThread(threading.Thread):
                       args=[self.file_hbcharts_lock, self.file_hibor_lock,
                             self.log_hbcharts_lock, self.log_hibor_lock],
                       hour=12, minute=0)
+        sched.add_job(general_report, 'interval',
+                      args=[self.file_hbcharts_lock, self.file_hibor_lock,
+                            self.log_hbcharts_lock, self.log_hibor_lock],
+                      minutes=1)
         sched.start()
 
 
