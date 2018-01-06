@@ -5,13 +5,14 @@ from hbase.ttypes import *
 import hashlib
 import configparser
 import time
+from filelock import FileLock
 
 CONFIG_FILE = "path.conf"
 
 
 class HbaseControl(object):
 
-    def __init__(self, table, column_families, put_num=0):
+    def __init__(self, table, column_families, file_lock, put_num=0):
         """
         初始化一个 HBase Table
         :param table: 表的名字,比如 b'hb_charts'
@@ -34,6 +35,7 @@ class HbaseControl(object):
         self.client = Hbase.Client(self.protocol)
         self.transport.open()
 
+        self.file_lock = file_lock
         self.put_num = put_num
 
         # set table and column families
@@ -96,15 +98,16 @@ class HbaseControl(object):
 
         self.put_num += len(mutations_batch)
 
-        f = open(job_id + '.txt', 'w')
-        json = dict({'date': '', 'job_id': '', 'id': '', 'update': '', 'number': ''})
-        json['date'] = time.strftime('%Y-%m-%d %H:%M:%S')
-        json['job_id'] = job_id
-        json['id'] = records[-1][row_name]
-        if job_id.split(':')[0] == 'mongodb':
-            json['update'] = records[-1][log_column]
-        elif job_id.split(':')[0] == 'mysql':
-            json['update'] = records[-1][log_column].strftime('%Y-%m-%d %H:%M:%S')
-        json['number'] = str(self.put_num)
-        f.write(str(json))
-        f.close()
+        with self.file_lock:
+            f = open(job_id + '.txt', 'w')
+            json = dict({'date': '', 'job_id': '', 'id': '', 'update': '', 'number': ''})
+            json['date'] = time.strftime('%Y-%m-%d %H:%M:%S')
+            json['job_id'] = job_id
+            json['id'] = records[-1][row_name]
+            if job_id.split(':')[0] == 'mongodb':
+                json['update'] = records[-1][log_column]
+            elif job_id.split(':')[0] == 'mysql':
+                json['update'] = records[-1][log_column].strftime('%Y-%m-%d %H:%M:%S')
+            json['number'] = str(self.put_num)
+            f.write(str(json))
+            f.close()
