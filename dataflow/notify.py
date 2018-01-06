@@ -28,7 +28,7 @@ class MyEmail:
         self.fromaddr = fromaddr
         self.toaddr = toaddr
         print((smtp_server.split(':')[0], int(smtp_server.split(':')[-1])))
-        self.server = smtplib.SMTP(smtp_server.split(':')[0], int(smtp_server.split(':')[-1]))
+        self.server = smtplib.SMTP(smtp_server.split(':')[0], int(smtp_server.split(':')[-1]), timeout=10)
         self.server.ehlo()
         self.server.starttls()
         self.server.login(fromaddr, password)
@@ -113,7 +113,7 @@ def tail(f, lines=1, _buffer=4098):
 def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
     mongo = MongodbControl.MongodbControl()
     mongo_count = mongo.collection.find().count()
-    mongo_update = str(mongo.collection.find().sort('last_updated').limit(1).next()['last_updated'])
+    mongo_update = str(mongo.collection.find().sort({'last_updated': -1}).limit(1).next()['last_updated'])
     with file_hbcharts_lock:
         with FileLock('mongodb:hb_charts.txt'):
             with open('mongodb:hb_charts.txt') as f:
@@ -125,7 +125,7 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     cursor = sql.connection.cursor()
     cursor.execute('select count(*) from core_doc.hibor')
     mysql_count = cursor.fetchone()['count(*)']
-    cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at LIMIT 1;')
+    cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at DESC LIMIT 1;')
     mysql_update = str(cursor.fetchone()['update_at'])
     with file_hbcharts_lock:
         with FileLock('mysql:hibor.txt'):
@@ -160,11 +160,14 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
         .format(mongo_count, mongo_update, mongo_transfer_update, mongo_transfer_datetime,
                 mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime,
                 process_mongodb, process_mysql)
-
-    email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
-    email.set_subject('服务器情况报告')
-    email.set_bodytext(message)
-    email.send()
+    try:
+        email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
+        email.set_subject('服务器情况报告')
+        email.set_bodytext(message)
+        email.send()
+    except Exception as e:
+        print(e)
+        print(message)
 
 
 class DailyReportThread(threading.Thread):
