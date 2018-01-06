@@ -135,8 +135,8 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at LIMIT 1;')
     mysql_update = str(cursor.fetchone()['update_at'])
     with file_hbcharts_lock:
-        with FileLock('mysql\:hibor.txt'):
-            with open('mysql\:hibor.txt') as f:
+        with FileLock('mysql:hibor.txt'):
+            with open('mysql:hibor.txt') as f:
                 line = f.readlines()[0]
                 mysql_transfer_update = eval(line)['update']
                 mysql_transfer_datetime = eval(line)['date']
