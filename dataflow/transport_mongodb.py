@@ -97,7 +97,7 @@ class MongodbConsumerThread(threading.Thread):
                     logger.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
                     logger.warning(str(ex))
                 time.sleep(60)
-                hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
+                hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.file_lock, self.put_num)
 
 
 def get_last_progress(job_id):
