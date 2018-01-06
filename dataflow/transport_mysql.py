@@ -134,7 +134,6 @@ if __name__ == '__main__':
     hibor_lock = filelock.FileLock('mongodb:hb_charts')
     hibor_log_lock = filelock.FileLock('process_mongodb.log')
     t = notify.NotifyThread(hb_charts_lock, hibor_lock, hb_charts_log_lock, hibor_log_lock)
-    t = notify.NotifyThread(hb_charts_lock, hibor_lock, hb_charts_log_lock, hibor_log_lock)
     t.start()
 
     work_id = 'mysql:hibor'
