@@ -182,14 +182,14 @@ class DailyReportThread(threading.Thread):
     def run(self):
         sched = BlockingScheduler()
         # 在每天凌晨 12：00 更新本地字典
-        # sched.add_job(general_report, 'cron',
-        #               args=[self.file_hbcharts_lock, self.file_hibor_lock,
-        #                     self.log_hbcharts_lock, self.log_hibor_lock],
-        #               hour=12, minute=0)
-        sched.add_job(general_report, 'interval',
+        sched.add_job(general_report, 'cron',
                       args=[self.file_hbcharts_lock, self.file_hibor_lock,
                             self.log_hbcharts_lock, self.log_hibor_lock],
-                      minutes=1)
+                      hour=12, minute=0)
+        # sched.add_job(general_report, 'interval',
+        #               args=[self.file_hbcharts_lock, self.file_hibor_lock,
+        #                     self.log_hbcharts_lock, self.log_hibor_lock],
+        #               minutes=5)
         sched.start()
 
 
