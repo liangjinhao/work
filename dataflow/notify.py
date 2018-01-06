@@ -113,7 +113,7 @@ def tail(f, lines=1, _buffer=4098):
 def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
     mongo = MongodbControl.MongodbControl()
     mongo_count = mongo.collection.find().count()
-    mongo_update = str(mongo.collection.find().sort({'last_updated': -1}).limit(1).next()['last_updated'])
+    mongo_update = str(mongo.collection.find().sort([{'last_updated': -1}]).limit(1).next()['last_updated'])
     with file_hbcharts_lock:
         with FileLock('mongodb:hb_charts.txt'):
             with open('mongodb:hb_charts.txt') as f:
