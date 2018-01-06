@@ -1,4 +1,4 @@
-from threading import Thread
+import threading
 import time
 import datetime
 import logging
@@ -7,18 +7,20 @@ from queue import Queue
 import MySQLControl
 import HbaseControl
 import notify
+import filelock
 
 buffer_size = 50000
 mysql_queue = Queue(buffer_size)
 
 
-class MySQLProducerThread(Thread):
+class MySQLProducerThread(threading.Thread):
 
-    def __init__(self, job_id, start_time, start_id):
+    def __init__(self, job_id, start_time, start_id, log_lock):
         super(MySQLProducerThread, self).__init__()
         self.start_time = start_time
         self.start_id = start_id
         self.job_id = job_id
+        self.log_lock = log_lock
 
     def run(self):
         global mysql_queue
@@ -32,15 +34,16 @@ class MySQLProducerThread(Thread):
                 time.sleep(60)
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mysql生产线程重新连接==========')
-                logger.warning(self.job_id + '  ==========mysql生产线程重新连接==========')
-                logger.warning(str(ex))
+                with self.log_lock:
+                    logger.warning(self.job_id + '  ==========mysql生产线程重新连接==========')
+                    logger.warning(str(ex))
                 time.sleep(60)
                 mysql = MySQLControl.MySQLControl(self.start_time, self.start_id)
 
 
-class MySQLConsumerThread(Thread):
+class MySQLConsumerThread(threading.Thread):
 
-    def __init__(self, job_id, table_name, column_families, put_num):
+    def __init__(self, job_id, table_name, column_families, put_num, file_lock, log_lock):
         """
         初始化一个推送数据到 Hbase 的线程
         :param job_id: 任务id
@@ -55,22 +58,30 @@ class MySQLConsumerThread(Thread):
         self.put_num = put_num
         self.records = []
         self.records_size = 1000
+        self.file_lock = file_lock
+        self.log_lock = log_lock
 
     def run(self):
         global mysql_queue
-        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
+        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num, self.file_lock)
         while True:
             try:
                 if len(self.records) < self.records_size:
                     for i in range(len(self.records), self.records_size):
                         try:
-                            # 两分钟仍没有数据就抛出异常，并等待10分钟
-                            record = mysql_queue.get(timeout=60 * 2)
-                            mysql_queue.task_done()
-                            self.records.append(record)
+                            # 两分钟仍没有数据就抛出异常，并等待5分钟
+                            try:
+                                record = mysql_queue.get(timeout=60 * 2)
+                                mysql_queue.task_done()
+                                self.records.append(record)
+                            except Exception:
+                                if self.records:
+                                    hbase.puts(self.records, self.job_id)
+                                time.sleep(60 * 5)
                         except Exception:
                             print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待10分钟后继续.')
-                            logger.warning(self.job_id + '  数据更新到最新！待10分钟后继续.')
+                            with self.log_lock:
+                                logger.warning(self.job_id + '  数据更新到最新！待10分钟后继续.')
                             time.sleep(60 * 10)
 
                 hbase.puts(self.records, self.job_id)
@@ -80,11 +91,13 @@ class MySQLConsumerThread(Thread):
                 if self.put_num % 10000 == 0:
                     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  Hbase 已经写入{0}万条数据'
                           .format(self.put_num / 10000))
-                    logger.warning(self.job_id + '  Hbase 已经写入{0}万条数据'.format(self.put_num / 10000))
+                    with self.log_lock:
+                        logger.warning(self.job_id + '  Hbase 已经写入{0}万条数据'.format(self.put_num / 10000))
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mysql消费线程重新连接==========')
-                logger.warning(self.job_id + '  ==========mysql消费线程重新连接==========')
-                logger.warning(str(ex))
+                with self.log_lock:
+                    logger.warning(self.job_id + '  ==========mysql消费线程重新连接==========')
+                    logger.warning(str(ex))
                 time.sleep(60)
                 hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
 
@@ -116,6 +129,11 @@ if __name__ == '__main__':
     logger.addHandler(handle)
     logger.setLevel(logging.WARNING)
 
+    hb_charts_lock = filelock.FileLock('mongodb:hb_charts')
+    hb_charts_log_lock = filelock.FileLock('process_mongodb.log')
+    hibor_lock = filelock.FileLock('mongodb:hb_charts')
+    hibor_log_lock = filelock.FileLock('process_mongodb.log')
+    t = notify.NotifyThread(hb_charts_lock, hibor_lock, hb_charts_log_lock, hibor_log_lock)
     t = notify.NotifyThread()
     t.start()
 
@@ -127,8 +145,8 @@ if __name__ == '__main__':
     _id = last['id']
     _number = last['number']
 
-    p = MySQLProducerThread(_job_id, _update, _id)
-    c = MySQLConsumerThread(_job_id, b'hibor', [b'data'], _number)
+    p = MySQLProducerThread(_job_id, _update, _id, hibor_log_lock)
+    c = MySQLConsumerThread(_job_id, b'hibor', [b'data'], _number, hibor_lock, hibor_log_lock)
     p.start()
     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + work_id + '  ==========启动mysql生产线程==========')
     time.sleep(2)
