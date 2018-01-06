@@ -1,4 +1,4 @@
-from threading import Thread
+import threading
 import time
 import datetime
 import logging
@@ -7,17 +7,19 @@ from queue import Queue
 import MongodbControl
 import HbaseControl
 import notify
+import filelock
 
 buffer_size = 50000
 mongodb_queue = Queue(buffer_size)
 
 
-class MongodbProducerThread(Thread):
+class MongodbProducerThread(threading.Thread):
 
-    def __init__(self, job_id, start_time):
+    def __init__(self, job_id, start_time, log_lock):
         super(MongodbProducerThread, self).__init__()
         self.start_time = start_time
         self.job_id = job_id
+        self.log_lock = log_lock
 
     def run(self):
         global mongodb_queue
@@ -30,15 +32,16 @@ class MongodbProducerThread(Thread):
                 time.sleep(60)
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb生产线程重新连接==========')
-                logger.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
-                logger.warning(str(ex))
+                with self.log_lock:
+                    logger.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
+                    logger.warning(str(ex))
                 time.sleep(60)
                 mongodb = MongodbControl.MongodbControl(self.start_time)
 
 
-class MongodbConsumerThread(Thread):
+class MongodbConsumerThread(threading.Thread):
 
-    def __init__(self, job_id, table_name, column_families, put_num):
+    def __init__(self, job_id, table_name, column_families, put_num, file_lock, log_lock):
         """
         初始化一个推送数据到 Hbase 的线程
         :param job_id: 任务id
@@ -53,22 +56,30 @@ class MongodbConsumerThread(Thread):
         self.put_num = put_num
         self.records = []
         self.records_size = 1000
+        self.file_lock = file_lock
+        self.log_lock = log_lock
 
     def run(self):
         global mongodb_queue
-        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
+        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num, self.file_lock)
         while True:
             try:
                 if len(self.records) < self.records_size:
                     for i in range(len(self.records), self.records_size):
                         try:
-                            # 两分钟仍没有数据就抛出异常，并等待10分钟
-                            record = mongodb_queue.get(timeout=60*2)
-                            mongodb_queue.task_done()
-                            self.records.append(record)
+                            # 两分钟仍没有数据就抛出异常，并等待5分钟
+                            try:
+                                record = mongodb_queue.get(timeout=60*2)
+                                mongodb_queue.task_done()
+                                self.records.append(record)
+                            except Exception:
+                                if self.records:
+                                    hbase.puts(self.records, self.job_id)
+                                time.sleep(60 * 5)
                         except Exception:
                             print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待10分钟后继续.')
-                            logger.warning(self.job_id + '  数据更新到最新！待10分钟后继续.')
+                            with self.log_lock:
+                                logger.warning(self.job_id + '  数据更新到最新！待10分钟后继续.')
                             time.sleep(60 * 10)
 
                 hbase.puts(self.records, self.job_id)
@@ -78,11 +89,13 @@ class MongodbConsumerThread(Thread):
                 if self.put_num % 10000 == 0:
                     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ' + '  Hbase 已经写入{0}万条数据'
                           .format(self.put_num / 10000))
-                    logger.warning(self.job_id + '  Hbase 已经写入{0}万条数据'.format(self.put_num / 10000))
+                    with self.log_lock:
+                        logger.warning(self.job_id + '  Hbase 已经写入{0}万条数据'.format(self.put_num / 10000))
             except Exception as ex:
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb消费线程重新连接==========')
-                logger.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
-                logger.warning(str(ex))
+                with self.log_lock:
+                    logger.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
+                    logger.warning(str(ex))
                 time.sleep(60)
                 hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num)
 
@@ -114,7 +127,11 @@ if __name__ == '__main__':
     logger.addHandler(handle)
     logger.setLevel(logging.WARNING)
 
-    t = notify.NotifyThread()
+    hb_charts_lock = filelock.FileLock('mongodb:hb_charts')
+    hb_charts_log_lock = filelock.FileLock('process_mongodb.log')
+    hibor_lock = filelock.FileLock('mongodb:hb_charts')
+    hibor_log_lock = filelock.FileLock('process_mongodb.log')
+    t = notify.NotifyThread(hb_charts_lock, hibor_lock, hb_charts_log_lock, hibor_log_lock)
     t.start()
 
     work_id = 'mongodb:hb_charts'
@@ -125,8 +142,8 @@ if __name__ == '__main__':
     _id = last['id']
     _number = last['number']
 
-    p = MongodbProducerThread(_job_id, _update,)
-    c = MongodbConsumerThread(_job_id, b'hb_charts', [b'data'], _number)
+    p = MongodbProducerThread(_job_id, _update, hb_charts_log_lock)
+    c = MongodbConsumerThread(_job_id, b'hb_charts', [b'data'], _number, hb_charts_lock, hb_charts_log_lock)
     p.start()
     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + work_id + '  ==========启动mongodb生产线程==========')
     time.sleep(2)
