@@ -38,13 +38,6 @@ class MyEmail:
         self.msg['To'] = COMMASPACE.join(toaddr)
         self.msg['Date'] = formatdate(localtime=True)
 
-    def __del__(self):
-        """
-        close server
-        :return:
-        """
-        self.server.quit()
-
     def set_subject(self, subject):
         """
         set the subject of a email
