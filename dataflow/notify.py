@@ -124,7 +124,7 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     mysql_count = cursor.fetchone()['count(*)']
     cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at DESC LIMIT 1;')
     mysql_update = str(cursor.fetchone()['update_at'])
-    with file_hbcharts_lock:
+    with file_hibor_lock:
         with FileLock('mysql:hibor.txt'):
             with open('mysql:hibor.txt') as f:
                 line = f.readlines()[0]
@@ -135,7 +135,7 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
         with open('process_mongodb.log') as f1:
             last_lines = tail(f1, 10)
             process_mongodb = '\n'.join(last_lines)
-    with log_hbcharts_lock:
+    with log_hibor_lock:
         with open('process_mysql.log') as f2:
             last_lines = tail(f2, 10)
             process_mysql = '\n'.join(last_lines)
