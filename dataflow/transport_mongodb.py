@@ -61,7 +61,7 @@ class MongodbConsumerThread(threading.Thread):
 
     def run(self):
         global mongodb_queue
-        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.put_num, self.file_lock)
+        hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.file_lock, self.put_num)
         while True:
             try:
                 if len(self.records) < self.records_size:
