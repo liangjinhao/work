@@ -27,10 +27,7 @@ class MyEmail:
         """
         self.fromaddr = fromaddr
         self.toaddr = toaddr
-        print((smtp_server.split(':')[0], int(smtp_server.split(':')[-1])))
-        self.server = smtplib.SMTP(smtp_server.split(':')[0], int(smtp_server.split(':')[-1]), timeout=10)
-        self.server.ehlo()
-        self.server.starttls()
+        self.server = smtplib.SMTP_SSL(smtp_server, timeout=10)
         self.server.login(fromaddr, password)
 
         self.msg = MIMEMultipart()
@@ -161,7 +158,7 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
                 mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime,
                 process_mongodb, process_mysql)
     try:
-        email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
+        email = MyEmail('smtp.163.com:994', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
         email.set_subject('服务器情况报告')
         email.set_bodytext(message)
         email.send()
