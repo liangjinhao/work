@@ -135,8 +135,8 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at LIMIT 1;')
     mysql_update = str(cursor.fetchone()['update_at'])
     with file_hbcharts_lock:
-        with FileLock('mongodb:hibor.txt'):
-            with open('mongodb:hibor.txt') as f:
+        with FileLock('mysql\:hibor.txt'):
+            with open('mysql\:hibor.txt') as f:
                 line = f.readlines()[0]
                 mysql_transfer_update = eval(line)['update']
                 mysql_transfer_datetime = eval(line)['date']
@@ -189,10 +189,10 @@ class DailyReportThread(threading.Thread):
     def run(self):
         sched = BlockingScheduler()
         # 在每天凌晨 12：00 更新本地字典
-        sched.add_job(general_report, 'cron',
-                      args=[self.file_hbcharts_lock, self.file_hibor_lock,
-                            self.log_hbcharts_lock, self.log_hibor_lock],
-                      hour=12, minute=0)
+        # sched.add_job(general_report, 'cron',
+        #               args=[self.file_hbcharts_lock, self.file_hibor_lock,
+        #                     self.log_hbcharts_lock, self.log_hibor_lock],
+        #               hour=12, minute=0)
         sched.add_job(general_report, 'interval',
                       args=[self.file_hbcharts_lock, self.file_hibor_lock,
                             self.log_hbcharts_lock, self.log_hibor_lock],
