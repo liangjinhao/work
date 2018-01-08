@@ -123,6 +123,7 @@ class HBaseUtils:
             count += 1
             # 收集数据生成BathMutation
             mutations_ = []
+            print(line)
             for colName in col_names:
                 if str(colName, encoding='utf-8') in line:
                     mutations_.append(Mutation(column=colName,
