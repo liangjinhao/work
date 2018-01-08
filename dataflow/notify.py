@@ -112,11 +112,10 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     mongo_count = mongo.collection.find().count()
     mongo_update = str(mongo.collection.find().sort([('last_updated', -1)]).limit(1).next()['last_updated'])
     with file_hbcharts_lock:
-        with FileLock('mongodb:hb_charts.txt'):
-            with open('mongodb:hb_charts.txt') as f:
-                line = f.readlines()[0]
-                mongo_transfer_update = eval(line)['update']
-                mongo_transfer_datetime = eval(line)['date']
+        with open('mongodb:hb_charts.txt') as f:
+            line = f.readlines()[0]
+            mongo_transfer_update = eval(line)['update']
+            mongo_transfer_datetime = eval(line)['date']
 
     sql = MySQLControl.MySQLControl()
     cursor = sql.connection.cursor()
@@ -125,11 +124,10 @@ def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_h
     cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at DESC LIMIT 1;')
     mysql_update = str(cursor.fetchone()['update_at'])
     with file_hibor_lock:
-        with FileLock('mysql:hibor.txt'):
-            with open('mysql:hibor.txt') as f:
-                line = f.readlines()[0]
-                mysql_transfer_update = eval(line)['update']
-                mysql_transfer_datetime = eval(line)['date']
+        with open('mysql:hibor.txt') as f:
+            line = f.readlines()[0]
+            mysql_transfer_update = eval(line)['update']
+            mysql_transfer_datetime = eval(line)['date']
 
     with log_hbcharts_lock:
         with open('process_mongodb.log') as f1:
