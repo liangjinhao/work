@@ -106,5 +106,5 @@ class UpdateDictThread(threading.Thread):
         f = UpdateDict()
         sched = BlockingScheduler()
         # 在每天凌晨 12：00 更新本地字典
-        sched.add_job(f.run, 'cron', hour=12, minute=0)
+        sched.add_job(f.run, 'cron', hour=0, minute=0)
         sched.start()
