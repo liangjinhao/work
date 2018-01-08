@@ -35,7 +35,7 @@ def process(data):
         entry['rowKey'] = rowkey
         entry['data:title'] = title
         entry['data:axis'] = axis
-        entry['data:years'] = years
+        entry['data:years'] = str(years)
         entry['data:years_update_time'] = last_updated
         final.append(entry)
     return iter(final)
