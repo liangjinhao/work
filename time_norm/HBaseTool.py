@@ -51,7 +51,7 @@ class HBaseUtils:
         # client.scannerGet(scanner)
 
         # 定义扫描的 scanner_id
-        scanner_id = client.scannerOpenWithStop(table_name, start_key, end_key, col_names, attributes)
+        scanner_id = client.scannerOpenWithStop(table_name, start_key, end_key, col_names, attributes=None)
 
         data_list = []
         # result = client.scannerGet(scanner_id)
