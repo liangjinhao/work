@@ -107,54 +107,58 @@ def tail(f, lines=1, _buffer=4098):
     return lines_found[-lines:]
 
 
-def general_report(file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
-    mongo = MongodbControl.MongodbControl()
-    mongo_count = mongo.collection.find().count()
-    mongo_update = str(mongo.collection.find().sort([('last_updated', -1)]).limit(1).next()['last_updated'])
-    with file_hbcharts_lock:
-        with open('mongodb:hb_charts.txt') as f:
-            line = f.readlines()[0]
-            mongo_transfer_update = eval(line)['update']
-            mongo_transfer_datetime = eval(line)['date']
+def general_report(job, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
+    message = ''
 
-    sql = MySQLControl.MySQLControl()
-    cursor = sql.connection.cursor()
-    cursor.execute('select count(*) from core_doc.hibor')
-    mysql_count = cursor.fetchone()['count(*)']
-    cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at DESC LIMIT 1;')
-    mysql_update = str(cursor.fetchone()['update_at'])
-    with file_hibor_lock:
-        with open('mysql:hibor.txt') as f:
-            line = f.readlines()[0]
-            mysql_transfer_update = eval(line)['update']
-            mysql_transfer_datetime = eval(line)['date']
+    if job == 'hb_charts':
+        mongo = MongodbControl.MongodbControl()
+        mongo_count = mongo.collection.find().count()
+        mongo_update = str(mongo.collection.find().sort([('last_updated', -1)]).limit(1).next()['last_updated'])
+        with file_hbcharts_lock:
+            with open('mongodb:hb_charts.txt') as f:
+                line = f.readlines()[0]
+                mongo_transfer_update = eval(line)['update']
+                mongo_transfer_datetime = eval(line)['date']
+        with log_hbcharts_lock:
+            with open('process_mongodb.log') as f1:
+                last_lines = tail(f1, 10)
+                process_mongodb = '\n'.join(last_lines)
 
-    with log_hbcharts_lock:
-        with open('process_mongodb.log') as f1:
-            last_lines = tail(f1, 10)
-            process_mongodb = '\n'.join(last_lines)
-    with log_hibor_lock:
-        with open('process_mysql.log') as f2:
-            last_lines = tail(f2, 10)
-            process_mysql = '\n'.join(last_lines)
+        message = '-----MongoDB-----\n' \
+                  '数据库数据量：{}\n' \
+                  '数据库最新时：{}\n' \
+                  '推送进度时间：{}\n' \
+                  '最后推送时间：{}\n' \
+                  '-----Mongo.log-----\n' \
+                  '{}' \
+            .format(mongo_count, mongo_update, mongo_transfer_update, mongo_transfer_datetime, process_mongodb)
 
-    message = '-----MongoDB-----\n' \
-              '数据库数据量：{}\n' \
-              '数据库最新时：{}\n' \
-              '推送进度时间：{}\n' \
-              '最后推送时间：{}\n' \
-              '-----MySQL-----\n' \
-              '数据库数据量：{}\n' \
-              '数据库最新时：{}\n' \
-              '推送进度时间：{}\n' \
-              '最后推送时间：{}\n' \
-              '-----Mongo.log-----\n' \
-              '{}' \
-              '-----MySQL.log-----\n' \
-              '{}' \
-        .format(mongo_count, mongo_update, mongo_transfer_update, mongo_transfer_datetime,
-                mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime,
-                process_mongodb, process_mysql)
+    if job == 'hibor':
+        sql = MySQLControl.MySQLControl()
+        cursor = sql.connection.cursor()
+        cursor.execute('select count(*) from core_doc.hibor')
+        mysql_count = cursor.fetchone()['count(*)']
+        cursor.execute('SELECT * FROM core_doc.hibor ORDER BY update_at DESC LIMIT 1;')
+        mysql_update = str(cursor.fetchone()['update_at'])
+        with file_hibor_lock:
+            with open('mysql:hibor.txt') as f:
+                line = f.readlines()[0]
+                mysql_transfer_update = eval(line)['update']
+                mysql_transfer_datetime = eval(line)['date']
+        with log_hibor_lock:
+            with open('process_mysql.log') as f2:
+                last_lines = tail(f2, 10)
+                process_mysql = '\n'.join(last_lines)
+
+        message = '-----MySQL-----\n' \
+                  '数据库数据量：{}\n' \
+                  '数据库最新时：{}\n' \
+                  '推送进度时间：{}\n' \
+                  '最后推送时间：{}\n' \
+                  '-----MySQL.log-----\n' \
+                  '{}' \
+            .format(mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime, process_mysql)
+
     try:
         email = MyEmail('smtp.163.com:994', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
         email.set_subject('服务器情况报告')
@@ -170,8 +174,9 @@ class DailyReportThread(threading.Thread):
     用于每天产生报告消息
     """
 
-    def __init__(self, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
+    def __init__(self, job, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
         super(DailyReportThread, self).__init__()
+        self.job = job
         self.file_hbcharts_lock = file_hbcharts_lock
         self.file_hibor_lock = file_hibor_lock
         self.log_hbcharts_lock = log_hbcharts_lock
@@ -181,7 +186,7 @@ class DailyReportThread(threading.Thread):
         sched = BlockingScheduler()
         # 在每天凌晨 12：00 更新本地字典
         sched.add_job(general_report, 'cron',
-                      args=[self.file_hbcharts_lock, self.file_hibor_lock,
+                      args=[self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                             self.log_hbcharts_lock, self.log_hibor_lock],
                       hour=12, minute=0)
         # sched.add_job(general_report, 'interval',
@@ -197,8 +202,9 @@ class NotifyThread(threading.Thread):
     用于监控推送程序情况的线程
     """
 
-    def __init__(self, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
+    def __init__(self, job, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, log_hibor_lock):
         super(NotifyThread, self).__init__()
+        self.job = job
         self.file_hbcharts_lock = file_hbcharts_lock
         self.file_hibor_lock = file_hibor_lock
         self.log_hbcharts_lock = log_hbcharts_lock
@@ -207,7 +213,7 @@ class NotifyThread(threading.Thread):
     def run(self):
 
         # 每天12:00发送一个总结性的报告
-        t = DailyReportThread(self.file_hbcharts_lock, self.file_hibor_lock,
+        t = DailyReportThread(self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                               self.log_hbcharts_lock, self.log_hibor_lock)
         t.start()
 
@@ -216,22 +222,28 @@ class NotifyThread(threading.Thread):
         # 一旦出现异常则实时报告
         while True:
             flag = False
-            with self.log_hbcharts_lock:
-                with open('process_mongodb.log') as f1:
-                    last_lines = tail(f1, 1)
-                for line in last_lines:
-                    if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
-                        flag = True
-                        break
-            with self.log_hibor_lock:
-                with open('process_mysql.log') as f2:
-                    last_lines = tail(f2, 1)
-                for line in last_lines:
-                    if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
-                        flag = True
-                        break
+            if self.job == 'hb_charts':
+                with self.log_hbcharts_lock:
+                    with open('process_mongodb.log') as f1:
+                        last_lines = tail(f1, 1)
+                    for line in last_lines:
+                        if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
+                            flag = True
+                            break
                 if flag:
-                    general_report(self.file_hbcharts_lock, self.file_hibor_lock,
+                    general_report(self.job, self.file_hbcharts_lock, self.file_hibor_lock,
+                                   self.log_hbcharts_lock, self.log_hibor_lock)
+
+            if self.job == 'hibor':
+                with self.log_hibor_lock:
+                    with open('process_mysql.log') as f2:
+                        last_lines = tail(f2, 1)
+                    for line in last_lines:
+                        if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
+                            flag = True
+                            break
+                if flag:
+                    general_report(self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                                    self.log_hbcharts_lock, self.log_hibor_lock)
             time.sleep(60*60)
 
