@@ -188,7 +188,7 @@ class DailyReportThread(threading.Thread):
         sched.add_job(general_report, 'cron',
                       args=[self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                             self.log_hbcharts_lock, self.log_hibor_lock],
-                      hour=12, minute=0)
+                      hour=0, minute=0)
         # sched.add_job(general_report, 'interval',
         #               args=[self.file_hbcharts_lock, self.file_hibor_lock,
         #                     self.log_hbcharts_lock, self.log_hibor_lock],
@@ -225,9 +225,9 @@ class NotifyThread(threading.Thread):
             if self.job == 'hb_charts':
                 with self.log_hbcharts_lock:
                     with open('process_mongodb.log') as f1:
-                        last_lines = tail(f1, 1)
+                        last_lines = tail(f1, 10)
                     for line in last_lines:
-                        if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
+                        if '数据更新到最新！' not in line and 'Hbase 已经写入' not in line:
                             flag = True
                             break
                 if flag:
@@ -237,9 +237,9 @@ class NotifyThread(threading.Thread):
             if self.job == 'hibor':
                 with self.log_hibor_lock:
                     with open('process_mysql.log') as f2:
-                        last_lines = tail(f2, 1)
+                        last_lines = tail(f2, 10)
                     for line in last_lines:
-                        if '数据更新到最新！' not in line or 'Hbase 已经写入' not in line:
+                        if '数据更新到最新！' not in line and 'Hbase 已经写入' not in line:
                             flag = True
                             break
                 if flag:
