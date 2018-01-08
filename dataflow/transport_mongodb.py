@@ -54,6 +54,7 @@ class MongodbConsumerThread(threading.Thread):
         self.table_name = table_name
         self.column_families = column_families
         self.put_num = put_num
+        self.put_sum = 0
         self.records = []
         self.records_size = 1000
         self.file_lock = file_lock
@@ -86,7 +87,8 @@ class MongodbConsumerThread(threading.Thread):
                 self.put_num += len(self.records)
                 self.records = []
 
-                if self.put_num % 10000 == 0:
+                if self.put_num / 10000 > self.put_sum:
+                    self.put_sum = self.put_num/10000 + 1
                     print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ' + '  Hbase 已经写入{0}万条数据'
                           .format(self.put_num / 10000))
                     with self.log_lock:
