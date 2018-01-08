@@ -53,7 +53,7 @@ class MongodbConsumerThread(threading.Thread):
         self.job_id = job_id
         self.table_name = table_name
         self.column_families = column_families
-        self.put_num = put_num
+        self.put_num = int(put_num)
         self.put_sum = 0
         self.records = []
         self.records_size = 1000
