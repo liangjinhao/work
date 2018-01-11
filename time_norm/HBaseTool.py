@@ -129,7 +129,7 @@ class HBaseUtils:
                                                value=bytes(line[str(colName, encoding='utf-8')], encoding='utf-8')))
             result.append(Hbase.BatchMutation(row=bytes(line["rowKey"], encoding='utf-8'), mutations=mutations_))
             # 每1000条想hbase推送一次数据
-            if count is 1000:
+            if count % 1000 == 0:
                 client.mutateRows(table_name, result, None)
                 result = []
 
