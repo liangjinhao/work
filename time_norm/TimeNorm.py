@@ -24,16 +24,18 @@ def process(data):
                 years = abc_time.ABCYear.extract(title, [], current_year=current_year)
             else:
                 years = abc_time.ABCYear.extract(title, eval(axis), current_year=current_year)
-            # 将当前年份也加入进去
-            # if current_year is not None and str(current_year) not in years:
-            #     years.append(str(current_year))
-            #     years.sort()
+            # 将所在年份也加入进去
+            if current_year is not None and str(current_year) not in years:
+                years.append(str(current_year))
+                years.sort()
         else:
             print(item)
             years = []
 
         entry = dict()
         entry['rowKey'] = rowkey
+        entry['data:title'] = title
+        entry['data:axis'] = axis
         entry['data:years'] = str(years)
         entry['data:years_update_time'] = last_updated
         final.append(entry)
