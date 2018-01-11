@@ -117,6 +117,7 @@ class HBaseUtils:
 
         # 开始收集数据
         result = []
+        return_data = []
         count = 0
         for line in data:
             # print("data: " + str(line))
@@ -138,6 +139,7 @@ class HBaseUtils:
             client.mutateRows(table_name, result, None)
 
         transport.close()
+        return return_data
 
     @staticmethod
     def str_list_to_bytes_list(str_list):
