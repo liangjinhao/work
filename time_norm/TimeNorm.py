@@ -87,5 +87,6 @@ if __name__ == "__main__":
 
     result_RDD = new_df.rdd.mapPartitions(lambda x: process(x)).persist(StorageLevel.DISK_ONLY)
     print('------------------', result_RDD.count())
+    result_RDD.first()
     hbase_tool.write_rdd_to_hbase(result_RDD, ['data:title', 'data:axis', 'data:years', 'data:years_update_time'],
                                   "test").count()
