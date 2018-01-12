@@ -37,11 +37,11 @@ class Collector:
 
         self.phrase_dict_path = home_dir + conf.get("dictionary", "phrase")
         self.phrase_dict = dict()
-        self.reload_dict()
+        self.reload_dict(self.phrase_dict_path)
+        self.reload_dict(self.phrase_dict_path + '_local')
 
-    def reload_dict(self):
-        self.phrase_dict = dict()
-        with open(self.phrase_dict_path) as f:
+    def reload_dict(self, dict_path):
+        with open(dict_path) as f:
             for line in f:
                 if not line.startswith('#') and line != '\n':
                     self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
@@ -83,7 +83,7 @@ class Collector:
                     elif word in self.phrase_dict and tag.startswith('subject'):
                         weight = float(2.0)
                     else:
-                        weight = sum_weight / (rear - head)
+                        weight = sum_weight / len(word)
                     new_crf_result.append({'pos': nature, 'term': word, 'type': tag})
                     new_xgboost_result.append({'term': word, 'weight': weight})
                     head += (rear - head)
@@ -102,7 +102,7 @@ class Collector:
                     elif word in self.phrase_dict and tag.startswith('subject'):
                         weight = float(2.0)
                     else:
-                        weight = sum_weight / (rear - head)
+                        weight = sum_weight / len(word)
                     new_crf_result.append({'pos': nature, 'term': word, 'type': tag})
                     new_xgboost_result.append({'term': word, 'weight': weight})
                     head += (rear - head)
@@ -112,6 +112,30 @@ class Collector:
             rear = len(crf_result)
 
         result = {'data': new_crf_result, 'term_weight': new_xgboost_result}
+        return result
+
+    def tune_crf_tag(self, arg):
+        """
+        根据xgboost的预测权重值来调整CRF的tag。
+        当xgboost的预测权重值大于1时，而CRF的标签为useless时，将CRF的标签修为subject4;
+        当xgboost的预测权重值小于1时，而CRF的标签不为useless时，将CRF的标签修为useless;
+        :param arg:
+        :return:
+        """
+        crf_result = arg['data']
+        xgboost_result = arg['term_weight']
+        new_crf_result = []
+
+        for i in range(len(crf_result)):
+            crf_tag = crf_result[i]['type']
+            weight = xgboost_result[i]['weight']
+            if crf_tag == 'useless' and weight > 1.0:
+                new_crf_result.append({'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'subject4'})
+            # elif crf_tag != 'useless' and weight < 0.5:
+            #     new_crf_result.append({'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'useless'})
+            else:
+                new_crf_result.append(crf_result[i])
+        result = {'data': new_crf_result, 'term_weight': xgboost_result}
         return result
 
     def collect(self, sentence):
@@ -134,6 +158,7 @@ class Collector:
         # 处理词典中调整的词的tag
         tr_res = self.term_rank.predict_query(sentence)
         tr_res = self.dict_merge(tr_res)
+        tr_res = self.tune_crf_tag(tr_res)
 
         final_result["term_weight"] = tr_res["term_weight"]
 
