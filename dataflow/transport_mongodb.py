@@ -34,7 +34,7 @@ class MongodbProducerThread(threading.Thread):
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb生产线程重新连接==========')
                 with self.log_lock:
                     logger.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
-                    logger.warning(str(ex))
+                    logger.exception('mongodb生产线程出现错误')
                 time.sleep(60)
                 mongodb = MongodbControl.MongodbControl(self.start_time)
 
@@ -97,7 +97,7 @@ class MongodbConsumerThread(threading.Thread):
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mongodb消费线程重新连接==========')
                 with self.log_lock:
                     logger.warning(self.job_id + '  ==========mongodb消费线程重新连接==========')
-                    logger.warning(str(ex))
+                    logger.exception('mongodb消费线程出现错误')
                 time.sleep(60)
                 hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.file_lock, self.put_num)
 
