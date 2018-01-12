@@ -222,7 +222,7 @@ class NotifyThread(threading.Thread):
             if self.job == 'hb_charts':
                 with self.log_hbcharts_lock:
                     with open('process_mongodb.log') as f1:
-                        last_lines = tail(f1, 10)
+                        last_lines = tail(f1, 1)
                     for line in last_lines:
                         if 'ERROR' in line:
                             flag = True
@@ -234,7 +234,7 @@ class NotifyThread(threading.Thread):
             if self.job == 'hibor':
                 with self.log_hibor_lock:
                     with open('process_mysql.log') as f2:
-                        last_lines = tail(f2, 10)
+                        last_lines = tail(f2, 1)
                     for line in last_lines:
                         if 'ERROR' in line:
                             flag = True
