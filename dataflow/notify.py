@@ -160,7 +160,8 @@ def general_report(job, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, 
             .format(mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime, process_mysql)
 
     try:
-        email = MyEmail('smtp.163.com:994', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
+        email = MyEmail('smtp.163.com:994', 'bristlegrasses@163.com', ['chyan@abcft.com', 'ytzhao@abcft.com'],
+                        'yancheng19930129')
         email.set_subject('服务器情况报告')
         email.set_bodytext(message)
         email.send()
