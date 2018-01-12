@@ -18,7 +18,7 @@ class MyEmail:
     Use SMTP send emails
     """
 
-    def __init__(self, smtp_server, fromaddr, toaddr, password):
+    def __init__(self, smtp_server, fromaddr, toaddr, user, password):
         """
         :param smtp_server: smtp server, like 'smtp.gmail.com:587', 'smtp.163.com:25'
         :param fromaddr: your address
@@ -27,8 +27,12 @@ class MyEmail:
         """
         self.fromaddr = fromaddr
         self.toaddr = toaddr
-        self.server = smtplib.SMTP_SSL(smtp_server, timeout=10)
-        self.server.login(fromaddr, password)
+        self.server = smtplib.SMTP(smtp_server.split(':')[0], int(smtp_server.split(':')[1]))
+        self.server.ehlo()
+        self.server.starttls()
+        # self.server = smtplib.SMTP_SSL(smtp_server, timeout=10)
+        # self.server.ehlo()
+        self.server.login(user, password)
 
         self.msg = MIMEMultipart()
         self.msg['From'] = fromaddr
@@ -72,14 +76,6 @@ class MyEmail:
         """
         text = self.msg.as_string()
         self.server.sendmail(self.fromaddr, self.toaddr, text)
-
-    @staticmethod
-    def demo():
-        my_email = MyEmail('smtp.163.com:25', 'bristlegrasses@163.com', ['bristlegrasses@163.com'], 'yancheng19930129')
-        my_email.set_bodytext('Just a test mail')
-        my_email.set_subject('Report')
-        my_email.add_attachment(['/home/yancheng/图片/2017-12-29 18-45-37屏幕截图.png'])
-        my_email.send()
 
 
 def tail(f, lines=1, _buffer=4098):
@@ -160,8 +156,8 @@ def general_report(job, file_hbcharts_lock, file_hibor_lock, log_hbcharts_lock, 
             .format(mysql_count, mysql_update, mysql_transfer_update, mysql_transfer_datetime, process_mysql)
 
     try:
-        email = MyEmail('smtp.163.com:994', 'bristlegrasses@163.com', ['chyan@abcft.com', 'ytzhao@abcft.com'],
-                        'yancheng19930129')
+        email = MyEmail('mail.niub.la:465', 'chyan@abcft.com', ['chyan@abcft.com', 'ytzhao@abcft.com'],
+                        'chyan.abcft@niub', 'Ytn3Lvc4')
         email.set_subject('服务器情况报告')
         email.set_bodytext(message)
         email.send()
@@ -228,7 +224,7 @@ class NotifyThread(threading.Thread):
                     with open('process_mongodb.log') as f1:
                         last_lines = tail(f1, 10)
                     for line in last_lines:
-                        if '数据更新到最新！' not in line and 'Hbase 已经写入' not in line:
+                        if 'ERROR' in line:
                             flag = True
                             break
                 if flag:
@@ -240,7 +236,7 @@ class NotifyThread(threading.Thread):
                     with open('process_mysql.log') as f2:
                         last_lines = tail(f2, 10)
                     for line in last_lines:
-                        if '数据更新到最新！' not in line and 'Hbase 已经写入' not in line:
+                        if 'ERROR' in line:
                             flag = True
                             break
                 if flag:
