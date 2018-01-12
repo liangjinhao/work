@@ -69,14 +69,9 @@ class MongodbConsumerThread(threading.Thread):
                     for i in range(len(self.records), self.records_size):
                         try:
                             # 两分钟仍没有数据就抛出异常，并等待5分钟
-                            try:
-                                record = mongodb_queue.get(timeout=60*2)
-                                mongodb_queue.task_done()
-                                self.records.append(record)
-                            except Exception:
-                                if self.records:
-                                    hbase.puts(self.records, self.job_id)
-                                time.sleep(60 * 5)
+                            record = mongodb_queue.get(timeout=60*2)
+                            mongodb_queue.task_done()
+                            self.records.append(record)
                         except Exception:
                             print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  数据更新到最新！待10分钟后继续.')
                             with self.log_lock:
