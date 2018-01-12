@@ -36,7 +36,7 @@ class MySQLProducerThread(threading.Thread):
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mysql生产线程重新连接==========')
                 with self.log_lock:
                     logger.warning(self.job_id + '  ==========mysql生产线程重新连接==========')
-                    logger.warning(str(ex))
+                    logger.exception('mysql生产线程出现错误')
                 time.sleep(60)
                 mysql = MySQLControl.MySQLControl(self.start_time, self.start_id)
 
@@ -99,7 +99,7 @@ class MySQLConsumerThread(threading.Thread):
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + '  ' + self.job_id + '  ==========mysql消费线程重新连接==========')
                 with self.log_lock:
                     logger.warning(self.job_id + '  ==========mysql消费线程重新连接==========')
-                    logger.warning(str(ex))
+                    logger.exception('mysql消费线程出现错误')
                 time.sleep(60)
                 hbase = HbaseControl.HbaseControl(self.table_name, self.column_families, self.file_lock, self.put_num)
 
