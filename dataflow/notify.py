@@ -224,7 +224,7 @@ class NotifyThread(threading.Thread):
                     with open('process_mongodb.log') as f1:
                         last_lines = tail(f1, 1)
                     for line in last_lines:
-                        if 'ERROR' in line:
+                        if '数据更新到最新！' not in line and 'Hbase 已经写入' not in line:
                             flag = True
                             break
                 if flag:
@@ -236,7 +236,7 @@ class NotifyThread(threading.Thread):
                     with open('process_mysql.log') as f2:
                         last_lines = tail(f2, 1)
                     for line in last_lines:
-                        if 'ERROR' in line:
+                        if '数据更新到最新！' not in line and 'Hbase 已经写入' not in line:
                             flag = True
                             break
                 if flag:
