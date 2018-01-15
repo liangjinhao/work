@@ -37,11 +37,15 @@ class Collector:
 
         self.phrase_dict_path = home_dir + conf.get("dictionary", "phrase")
         self.phrase_dict = dict()
-        self.reload_dict(self.phrase_dict_path)
-        self.reload_dict(self.phrase_dict_path + '_local')
+        self.reload_dict()
 
-    def reload_dict(self, dict_path):
-        with open(dict_path) as f:
+    def reload_dict(self):
+        self.phrase_dict = dict()
+        with open(self.phrase_dict_path + '_local') as f:
+            for line in f:
+                if not line.startswith('#') and line != '\n':
+                    self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
+        with open(self.phrase_dict_path) as f:
             for line in f:
                 if not line.startswith('#') and line != '\n':
                     self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]

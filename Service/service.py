@@ -78,7 +78,8 @@ class MyHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         # /dict/phrase 被修改，重新加载词典
-        if event.key[0] == 'modified' and event.key[1].split(r'/')[-1] == 'phrase' and event.key[2] is False:
+        if event.key[0] == 'modified' and (event.key[1].split(r'/')[-1] == 'phrase' or
+                                           event.key[1].split(r'/')[-1] == 'phrase_local') and event.key[2] is False:
             lock.acquire()
             collector_service.reload_dict()
             lock.release()
