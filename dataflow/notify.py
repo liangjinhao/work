@@ -244,6 +244,7 @@ class NotifyThread(threading.Thread):
                     general_report(self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                                    self.log_hbcharts_lock, self.log_hibor_lock)
                     time.sleep(60 * 60)
+            time.sleep(5)
 
 
 def demo():
