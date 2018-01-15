@@ -50,7 +50,7 @@ class MongodbControl(object):
     def yield_data(self):
 
         try:
-            self.get_data()
+            return self.get_data()
         # 可能会出现连接错误，比如常见的pymongo.errors.AutoReconnect错误，这个时候会尝试重新连接5次
         except Exception:
             conf = configparser.ConfigParser()
@@ -71,8 +71,7 @@ class MongodbControl(object):
                     self.db.authenticate(user, password)
                     self.collection = self.db[table]
 
-                    self.get_data()
-                    break
+                    return self.get_data()
                 except Exception:
                     time.sleep(pow(2, i) * 60)
                     if i == rounds-1:
