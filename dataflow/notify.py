@@ -230,6 +230,7 @@ class NotifyThread(threading.Thread):
                 if flag:
                     general_report(self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                                    self.log_hbcharts_lock, self.log_hibor_lock)
+                    time.sleep(60 * 60)
 
             if self.job == 'hibor':
                 with self.log_hibor_lock:
@@ -242,7 +243,7 @@ class NotifyThread(threading.Thread):
                 if flag:
                     general_report(self.job, self.file_hbcharts_lock, self.file_hibor_lock,
                                    self.log_hbcharts_lock, self.log_hibor_lock)
-            time.sleep(60*60)
+                    time.sleep(60 * 60)
 
 
 def demo():
