@@ -176,7 +176,7 @@ class Collector:
         # 处理brief
         brief = ''
         for i in range(len(crf_result)):
-            if crf_result[i]['term'] not in self.phrase_dict:
+            if crf_result[i]['type'] != 'useless':
                 brief += crf_result[i]['term']
         final_result["brief"] = brief
 
