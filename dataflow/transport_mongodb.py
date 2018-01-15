@@ -12,7 +12,6 @@ import filelock
 buffer_size = 50000
 mongodb_queue = Queue(buffer_size)
 
-
 class MongodbProducerThread(threading.Thread):
 
     def __init__(self, job_id, start_time, log_lock):
@@ -36,7 +35,7 @@ class MongodbProducerThread(threading.Thread):
                     logger.warning(self.job_id + '  ==========mongodb生产线程重新连接==========')
                     logger.exception('mongodb生产线程出现错误')
                 time.sleep(60)
-                mongodb = MongodbControl.MongodbControl(self.start_time)
+            mongodb = MongodbControl.MongodbControl(self.start_time)
 
 
 class MongodbConsumerThread(threading.Thread):
