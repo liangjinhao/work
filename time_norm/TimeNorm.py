@@ -16,14 +16,19 @@ def process(data):
         current_year = int(item[columns[3]][0:4]) if columns[3] in item else None
 
         if isinstance(title, str) and isinstance(axis, str) and type(eval(axis)) is list:
-            type_error = False
-            for x in eval(axis):
-                if not isinstance(x, str):
-                    type_error = True
-            if type_error:
-                years = abc_time.ABCYear.extract(title, [], current_year=current_year)
-            else:
+
+            # axis 可能是诸如这种格式的： ['2013', '2014']
+            if all(isinstance(i, str) for i in eval(axis)):
                 years = abc_time.ABCYear.extract(title, eval(axis), current_year=current_year)
+
+            # axis 也可能是诸如这种格式的： [{'text': '2013', 'rotated': False, 'tag': 'hAxisTextD',
+            # 'bbox': {'xmin': 829, 'ymin': 750, 'ymax': 786, 'xmax': 984}, 'type': 'text', 'isTime': True},
+            # {'text': '2014', 'rotated': False, 'tag': 'hAxisTextD',
+            # 'bbox': {'xmin': 572, 'ymin': 750, 'ymax': 787, 'xmax': 725}, 'type': 'text', 'isTime': True}]
+            if all(isinstance(i, dict) for i in eval(axis)):
+                new_axis = [i['text'] for i in eval(axis)]
+                years = abc_time.ABCYear.extract(title, new_axis, current_year=current_year)
+
             # 将所在年份也加入进去
             if current_year is not None and str(current_year) not in years:
                 years.append(str(current_year))
