@@ -1,6 +1,7 @@
 import pymysql.cursors
 import pymysql
 import configparser
+import time
 
 CONFIG_FILE = "path.conf"
 
@@ -55,3 +56,4 @@ class MySQLControl:
                 self.start_time = row['update_at']
                 self.start_id = row['id']
                 yield(row)
+            time.sleep(1)
