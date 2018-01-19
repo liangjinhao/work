@@ -38,11 +38,11 @@ def process(data):
             years = []
 
         entry = dict()
-        entry['rowKey'] = rowkey
-        entry['data:title'] = title
-        entry['data:axis'] = axis
+        entry['rowKey'] = str(rowkey)
+        entry['data:title'] = str(title)
+        entry['data:axis'] = str(axis)
         entry['data:years'] = str(years)
-        entry['data:years_update_time'] = last_updated
+        entry['data:years_update_time'] = str(last_updated)
         final.append(entry)
 
     return iter(final)
