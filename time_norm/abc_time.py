@@ -31,10 +31,10 @@ class ABCYear:
             current_year = datetime.date.today().year
 
         regexes = {
-            # 年份时间段：比如 '2015-2017'，'13-17年'
-            '1': '(?<![\d])(?:20)\d{2}年?[-~到至](?:20)?\d{2}年?|(?<![\d])\d{2}年?[-~到至]\d{2}年',
-            # 年份：比如 '2017'，'17年'
-            '2': '(?<![\d])20\d{2}(?![\d])|(?<![\d])\d{2}年',
+            # 年份时间段：比如 '2015-2017'，'93-17年'
+            '1': '(?<![\d])(?:19|20)\d{2}年?[-~到至](?:19|20)?\d{2}年?|(?<![\d])\d{2}年?[-~到至]\d{2}年',
+            # 年份：比如 '2017'，'17年'，'97年'
+            '2': '(?<![\d])(?:19|20)\d{2}(?![\d])|(?<![\d])\d{2}年',
             # 特殊简称：比如 '17Q3'，'2Q16'，'15H2'，'FY15'，'H1'14'，'Q3 17'
             '3': "(?<![\d])\d{2}[AEHQ][1-4]|"
                  "(?<![\d])\d{2}[' ][1-4][AEHQ]|"
@@ -43,18 +43,18 @@ class ABCYear:
                  "(?<![\d])\d{2}FY|"
                  "FY\d{2}(?![\d])",
             # 详细时间：比如 '20170101'，'2017-01-01'，'2017/01/01'，'2017.01.01'
-            '4': '(20\d{2}[-/.](?:1[0-2]|0?[1-9])[-/.](?:[12][0-9]|3[01]|0?[1-9])|'
-                 '(?<![\d])20\d{2}(?:1[0-2]|0?[1-9])(?:[12][0-9]|3[01]|0?[1-9])(?![\d]))',
-            # 汉字年份：比如 '一七年'
-            '5': '(?:[零〇一二])?[零〇一二三四五六七八九]{2}年',
-            # 其他表述2：比如 '前两年'，'两年前'，'两年来'，'后三年'，'近10年'
-            '6': '((?:[前近]|至今|过去)(?:[一二三四五六七八九]{1,2}|[1-9]|[12][0-9])年|'
-                 '(?:[一二三四五六七八九]{1,2}|[1-9]|[12][0-9])年(?:[内来]|以来))'
+            '4': '((?:19|20)\d{2}[-/.](?:1[0-2]|0?[1-9])[-/.](?:[12][0-9]|3[01]|0?[1-9])|'
+                 '(?<![\d])(?:19|20)\d{2}(?:1[0-2]|0?[1-9])(?:[12][0-9]|3[01]|0?[1-9])(?![\d]))',
+            # 汉字年份：比如 '二〇一七年'
+            '5': '(?:二[零〇])?[零〇一二三四五六七八九]{2}年',
+            # 其他表述：比如 '前两年'，'近两年'，'两年来'，'三年以来'，'近10年'
+            '6': '((?:[前近]|至今|过去)(?:[一二三四五六七八九两]|[1-9]|[12][0-9])年|'
+                 '(?:[一二三四五六七八九两]|[1-9]|[12][0-9])年(?:[内来]|以来))'
         }
 
         number_mapping = {
             '〇': '0', '零': '0', '一': '1', '二': '2', '三': '3', '四': '4',
-            '五': '5', '六': '6', '七': '7', '八': '8', '九': '9'
+            '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '两': '2'
         }
 
         years = []
@@ -69,8 +69,25 @@ class ABCYear:
                         years_range = re.split('[-~到至]', raw_time)
                         start_year_raw = years_range[0].replace('年', '')
                         end_year_raw = years_range[1].replace('年', '')
-                        start_year = start_year_raw if len(start_year_raw) == 4 else '20' + start_year_raw
-                        end_year = end_year_raw if len(end_year_raw) == 4 else '20' + end_year_raw
+
+                        if len(start_year_raw) == 4:
+                            start_year = start_year_raw
+                        else:
+                            # 只考虑上世纪80年代之后的
+                            if start_year_raw > '80':
+                                start_year = '19' + start_year_raw
+                            else:
+                                start_year = '20' + start_year_raw
+
+                        if len(end_year_raw) == 4:
+                            end_year = end_year_raw
+                        else:
+                            # 只考虑上世纪80年代之后的
+                            if end_year_raw > '80':
+                                end_year = '19' + end_year_raw
+                            else:
+                                end_year = '20' + end_year_raw
+
                         interval_years = [x for x in range(eval(start_year), eval(end_year) + 1)]
                         years.extend([str(x) for x in interval_years if str(x) not in years])
 
@@ -78,7 +95,16 @@ class ABCYear:
                 match = re.findall(regexes[rule_key], sentence)
                 if match:
                     for raw_time in match:
-                        norm_time = raw_time if len(raw_time) == 4 else '20' + raw_time.strip('年')
+
+                        if len(raw_time) == 4:
+                            norm_time = raw_time
+                        else:
+                            # 只考虑上世纪80年代之后的
+                            if raw_time.strip('年') > '80':
+                                norm_time = '19' + raw_time.strip('年')
+                            else:
+                                norm_time = '20' + raw_time.strip('年')
+
                         if norm_time not in years:
                             years.append(norm_time)
 
@@ -86,7 +112,11 @@ class ABCYear:
                 match = re.findall(regexes[rule_key], sentence)
                 if match:
                     for raw_time in match:
-                        norm_time = '20' + re.search('\d{2}', raw_time).group()
+                        year = re.search('\d{2}', raw_time).group()
+                        if year > '80':
+                            norm_time = '19' + year
+                        else:
+                            norm_time = '20' + year
                         if norm_time not in years:
                             years.append(norm_time)
 
@@ -166,9 +196,12 @@ class ABCYear:
         # 解析为递增的则是正确方式（图片的轴上的时间肯定是逐步增大的），如果两种都是递增，那则无法判断年份，
         # 比如 ['08/01/15','08/01/16','08/01/17']
         years = []
-        contain_years = True  # 是否为时间序列
-        matched_times = []  # 匹配到的时间
-        year_position = -1
+
+        pattern1_times = []
+        pattern1_year_pos = {'is_time': True, 'must': None, 'must_not': None}
+        pattern2_times = []
+        pattern2_year_pos = {'is_time': True, 'must': None, 'must_not': None}
+
         for i in axis_info:
             i = i.replace(' ', '')
 
@@ -181,43 +214,107 @@ class ABCYear:
                 pattern = re.compile(key, re.IGNORECASE)
                 i = pattern.sub(month_mapping[key], i)
 
-            mix_pattern = re.compile(r'(?<![\d])\d{1,2}[/-]\d{1,2}[/-]\d{1,2}(?![\d])')
-            match = re.findall(mix_pattern, i)
-            if not match:
-                # contain_years = False
-                continue
-            else:
-                for j in match:
+            mix_pattern1 = re.compile(r'(?<![\d])\d{1,2}[/-]\d{1,2}[/-]\d{1,2}(?![\d])')
+            match1 = re.findall(mix_pattern1, i)
+            mix_pattern2 = re.compile(r'(?<![\d])\d{1,2}[/-]\d{1,2}(?![\d])')
+            match2 = re.findall(mix_pattern2, i)
+
+            if match1:
+                for j in match1:
+                    pattern1_times.append(j)
                     # 如果第一个位置大于12,则第一个位置是年份
                     if int(re.split('[/-]', j)[0]) > 12:
-                        year_position = 0
+                        if pattern1_year_pos['is_time'] and pattern1_year_pos['must'] != 2:
+                            pattern1_year_pos['must'] = 0
+                        else:
+                            pattern1_year_pos['is_time'] = False
                     # 如果第二个位置大于12,则第三个位置是年份
                     if int(re.split('[/-]', j)[1]) > 12:
-                        year_position = 2
-                    matched_times.append(j)
-        if contain_years:
-            if year_position == -1:
+                        if pattern1_year_pos['is_time'] and pattern1_year_pos['must'] != 0:
+                            pattern1_year_pos['must'] = 2
+                        else:
+                            pattern1_year_pos['is_time'] = False
 
-                position_0_list = [int(re.split('[/-]', x)[0]) for x in matched_times]
-                position_1_list = [int(re.split('[/-]', x)[1]) for x in matched_times]
-                position_2_list = [int(re.split('[/-]', x)[2]) for x in matched_times]
+            if match2:
+                for j in match2:
+                    pattern2_times.append(j)
+
+                    # 如果第0个数字大于31,则第0个数字是年份
+                    if int(re.split('[/-]', j)[0]) > 31:
+                        if pattern2_year_pos['is_time'] and pattern2_year_pos['must_not'] != 0 and \
+                                pattern2_year_pos['must'] != 1:
+                            pattern2_year_pos['must'] = 0
+                            pattern2_year_pos['must_not'] = 1
+                        else:
+                            pattern2_year_pos['is_time'] = False
+
+                    # 如果第0个数字 12< <31,则第1个数字不可能是年份
+                    if 12 < int(re.split('[/-]', j)[0]) <= 31:
+                        if pattern2_year_pos['is_time'] and pattern2_year_pos['must'] != 1:
+                            pattern2_year_pos['must_not'] = 1
+                        if pattern2_year_pos == 1:
+                            pattern2_year_pos['is_time'] = False
+
+                    # 如果第1个数字大于31,则第1个数字是年份
+                    if int(re.split('[/-]', j)[1]) > 31:
+
+                        if pattern2_year_pos['is_time'] and pattern2_year_pos['must_not'] != 1 and \
+                                pattern2_year_pos['must'] != 0:
+                            pattern2_year_pos['must'] = 1
+                            pattern2_year_pos['must_not'] = 0
+                        else:
+                            pattern2_year_pos['is_time'] = False
+
+                    # 如果第1个数字 12 < < 31, 则第0个数字不可能是年份
+                    if 12 < int(re.split('[/-]', j)[1]) <= 31:
+                        if pattern2_year_pos['is_time'] and pattern2_year_pos['must'] != 0:
+                            pattern2_year_pos['must_not'] = 0
+                        if pattern2_year_pos == 1:
+                            pattern2_year_pos['is_time'] = False
+
+        if pattern1_year_pos['is_time']:
+            if pattern1_year_pos['must'] is None:
+
+                position_0_list = [int(re.split('[/-]', x)[0]) for x in pattern1_times]
+                position_1_list = [int(re.split('[/-]', x)[1]) for x in pattern1_times]
+                position_2_list = [int(re.split('[/-]', x)[2]) for x in pattern1_times]
 
                 is_asc_0 = all(position_0_list[i] < position_0_list[i + 1] for i in range(len(position_0_list) - 1))
                 is_asc_1 = all(position_1_list[i] < position_1_list[i + 1] for i in range(len(position_1_list) - 1))
                 is_asc_2 = all(position_2_list[i] < position_2_list[i + 1] for i in range(len(position_2_list) - 1))
 
                 if is_asc_0 and not is_asc_1 and not is_asc_2:
-                    year_position = 0
+                    pattern1_year_pos['must'] = 0
                 if is_asc_2 and not is_asc_0 and not is_asc_1:
-                    year_position = 0
+                    pattern1_year_pos['must'] = 2
 
-            if year_position != -1:
-                for j in matched_times:
-                    year = '20' + re.split('[/-]', j)[year_position]
+            if pattern1_year_pos['must'] is not None:
+                for j in pattern1_times:
+                    year = '20' + re.split('[/-]', j)[pattern1_year_pos['must']]
                     if year not in years:
                         years.append(year)
+
+        if pattern2_year_pos['is_time']:
+            position_0_list = [int(re.split('[/-]', x)[0]) for x in pattern2_times]
+            position_1_list = [int(re.split('[/-]', x)[1]) for x in pattern2_times]
+            is_asc_0 = all(position_0_list[i] <= position_0_list[i + 1] for i in range(len(position_0_list) - 1))
+            is_asc_1 = all(position_1_list[i] <= position_1_list[i + 1] for i in range(len(position_1_list) - 1))
+
+            if pattern2_year_pos['must'] is None and pattern2_year_pos['must_not'] == 0 and is_asc_1 and not is_asc_0:
+                pattern2_year_pos['must'] = 1
+            if pattern2_year_pos['must'] is None and pattern2_year_pos['must_not'] == 1 and is_asc_0 and not is_asc_1:
+                pattern2_year_pos['must'] = 0
+
+            if pattern2_year_pos['must'] is not None:
+                for j in pattern2_times:
+                    year = '20' + re.split('[/-]', j)[pattern2_year_pos['must']]
+                    if year not in years:
+                        years.append(year)
+
         years.sort()
+        print(pattern2_year_pos)
         return years
 
 
-# print(ABCYear.extract('过去三年的情况', ['最近wd14年sd2008-01-04', '多数08-01-11', '大饭店09-01-11', '2013-07-11']))
+# print(ABCYear.extract('三年', ['12/10/12', '10/11/14']))
+
