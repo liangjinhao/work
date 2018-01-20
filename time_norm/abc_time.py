@@ -47,8 +47,10 @@ class ABCYear:
                  '(?<![\d])(?:19|20)\d{2}(?:1[0-2]|0?[1-9])(?:[12][0-9]|3[01]|0?[1-9])(?![\d]))',
             # 汉字年份：比如 '二〇一七年'
             '5': '(?:二[零〇])?[零〇一二三四五六七八九]{2}年',
+            # 带月份的时间
+            '6': '(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[- ]\d{2}',
             # 其他表述：比如 '前两年'，'近两年'，'两年来'，'三年以来'，'近10年'
-            '6': '((?:[前近]|至今|过去)(?:[一二三四五六七八九两]|[1-9]|[12][0-9])年|'
+            '7': '((?:[前近]|至今|过去)(?:[一二三四五六七八九两]|[1-9]|[12][0-9])年|'
                  '(?:[一二三四五六七八九两]|[1-9]|[12][0-9])年(?:[内来]|以来))'
         }
 
@@ -140,6 +142,18 @@ class ABCYear:
                             years.append(norm_time)
 
             if rule_key == '6':
+                match = re.findall(regexes[rule_key], sentence, flags=re.IGNORECASE)
+                if match:
+                    for raw_time in match:
+                        year = re.search('\d{2}', raw_time).group()
+                        if year > '80':
+                            norm_time = '19' + year
+                        else:
+                            norm_time = '20' + year
+                        if norm_time not in years:
+                            years.append(norm_time)
+
+            if rule_key == '7':
                 match = re.findall(regexes[rule_key], sentence)
                 if match:
                     for raw_time in match:
@@ -316,5 +330,5 @@ class ABCYear:
         return years
 
 
-# print(ABCYear.extract('三年', ['12/10/12', '10/11/14']))
+# print(ABCYear.extract('三年', ['Jan-06', 'May-06', 'Sep-06', 'Jan-07', 'May-07', 'Sep-07', 'Jan-08', 'May-08', 'Sep-08', 'Jan-09', 'May-09', 'Sep-09', 'Jan-10', 'May-10', 'Sep-10', 'Jan-11', 'May-11', 'Sep-11', 'Jan-12', 'May-12', 'Sep-12', 'Jan-13']))
 
