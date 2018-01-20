@@ -326,7 +326,6 @@ class ABCYear:
                         years.append(year)
 
         years.sort()
-        print(pattern2_year_pos)
         return years
 
 
