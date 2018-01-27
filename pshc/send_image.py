@@ -141,7 +141,7 @@ def send(x):
 
             # 累计300条post一次数据，不要累计太多，Post请求有长度限制
             if post_count < 300:
-                if img_json['title'] != '':
+                if img_json['image_title'] != '':
                     post_imgs.append(img_json)
                     post_count += 1
             else:
@@ -186,7 +186,14 @@ df.show(10)
 df.filter("index_state IS null OR index_state != 1")
 df.show(10)
 
-new_rdd = df.rdd.mapPartitions(lambda x: send(x))
-new_df = sqlContext.createDataFrame(new_rdd, connector.catelog_to_schema(catelog))
+tmp_rdd = df.rdd
+countNum = tmp_rdd.count()
+partitionNum = countNum / 10000 + 1
+
+tmp_rdd2 = tmp_rdd.repartition(partitionNum).cache()
+tmp_rdd2.count()
+
+tmp_rdd2.mapPartitions(lambda x: send(x))
+new_df = sqlContext.createDataFrame(tmp_rdd2, connector.catelog_to_schema(catelog))
 new_df.show(10)
 connector.save_df_to_hbase(new_df, catelog)
