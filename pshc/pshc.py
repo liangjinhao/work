@@ -1,4 +1,3 @@
-from pyspark.sql import SQLContext
 from pyspark.sql.types import *
 import json
 import datetime
@@ -88,10 +87,10 @@ class PSHC(object):
     PySpark Hbase connector class, used to access Hbase in PySpark
     """
 
-    def __init__(self, sc, sql_context, conf=CONF):
+    def __init__(self, sc, spark_session, conf=CONF):
         self.conf = conf
         self.sc = sc
-        self.sqlContext = sql_context
+        self.sparkSession = spark_session
         self.cache_rdd = {}
 
     def get_df_from_hbase(self, catelog, cached=True):
@@ -140,7 +139,7 @@ class PSHC(object):
             rdds.cache()
             self.cache_rdd[table] = rdds
 
-        df = self.sqlContext.createDataFrame(rdds, self.catelog_to_schema(catelog))
+        df = self.sparkSession.createDataFrame(rdds, self.catelog_to_schema(catelog))
 
         return df
 
@@ -226,9 +225,8 @@ class PSHC(object):
 
         conf = SparkConf().setAppName("test")
         sc = SparkContext(conf=conf)
-        spark = SparkSession(sc)
-        sql_context = SQLContext(sc)
-        tests = PSHC(sc, sql_context)
+        spark_session = SparkSession(sc)
+        tests = PSHC(sc, spark_session)
 
         catelog1 = {
             "table": {"namespace": "default", "name": "test1"},
@@ -253,15 +251,15 @@ class PSHC(object):
         }
 
         # create dataframe1 and save to Hbase
-        df1 = sql_context.createDataFrame([{'id': '1', 'number': 3, 'message': 'message1'},
-                                           {'id': '2', 'number': 4, 'message': 'message2'},
-                                           {'id': '3', 'number': 5, 'message': 'message3'}])
+        df1 = spark_session.createDataFrame([{'id': '1', 'number': 3, 'message': 'message1'},
+                                            {'id': '2', 'number': 4, 'message': 'message2'},
+                                            {'id': '3', 'number': 5, 'message': 'message3'}])
         tests.save_df_to_hbase(df1, catelog1)
 
         # create dataframe2 and save to Hbase
-        df2 = sql_context.createDataFrame([{'id': '1', 'count': 4, 'information': 'information1'},
-                                           {'id': '2', 'count': 5, 'information': 'information2'},
-                                           {'id': '3', 'count': 6, }])
+        df2 = spark_session.createDataFrame([{'id': '1', 'count': 4, 'information': 'information1'},
+                                            {'id': '2', 'count': 5, 'information': 'information2'},
+                                            {'id': '3', 'count': 6, }])
         tests.save_df_to_hbase(df2, catelog2)
 
         df_1 = tests.get_df_from_hbase(catelog1)
@@ -272,8 +270,8 @@ class PSHC(object):
         df_1.registerTempTable('table_test1')
         df_2.registerTempTable('table_test2')
 
-        new_df = spark.sql("SELECT table_test1.id, table_test1.number, table_test1.message "
-                           "FROM table_test1 JOIN table_test2 ON table_test1.id == table_test2.id")
+        new_df = spark_session.sql("SELECT table_test1.id, table_test1.number, table_test1.message "
+                                   "FROM table_test1 JOIN table_test2 ON table_test1.id == table_test2.id")
         new_df.show()
         new_df.filter("information IS NOT null AND number > 3")
         new_df.show()
