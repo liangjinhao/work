@@ -35,43 +35,43 @@ org.apache.hbase:hbase-common:1.1.12
 
 def send(x):
 
-    img_json = {
-        "id": "",  # ggg + 图片url的md5 + _1
-        "image_id": "",  # ggg + 图片url的md5
-        "file_id": "",
-        "image_title": "",  # 图片 title
-        "image_legends": "",
-        "image_url": "",  # 图片 oss_url
-        "file_url": "",
-        "source_url": "",   # 文章 url
-        "chart_type": "",  # 图片类型, 比如: 'LINE_AREA', 'LINE_COLUMN'
-        "bitmap_type": "",
-        "type": "市场研报",  # 固定值, '市场研报'
-        "publish": "",  # 网站 url
-        "company": "",
-        "author": "",
-        "industry": "",
-        "summary": "",
-        "chart_data": "",
-
-        "confidence": 1.0,
-        "time": 0,  # 图的时间
-        "year": 0,  # 图的年份
-        "doc_score": 1.0,  # 默认填写1, 如果图片类型是需要的置 1.0，其余的则置 0.001
-        "stockcode": "",
-        "title": "",  # 文章 title
-        "chart_version": 1,
-        "doc_feature": "",
-        "tags": "",
-        "language": "1"  # 中文为1，英文为2
-        }
-
     result = []
 
     post_imgs = []
     post_count = 0
 
     for row in x:
+
+        img_json = {
+            "id": "",  # ggg + 图片url的md5 + _1
+            "image_id": "",  # ggg + 图片url的md5
+            "file_id": "",
+            "image_title": "",  # 图片 title
+            "image_legends": "",
+            "image_url": "",  # 图片 oss_url
+            "file_url": "",
+            "source_url": "",  # 文章 url
+            "chart_type": "",  # 图片类型, 比如: 'LINE_AREA', 'LINE_COLUMN'
+            "bitmap_type": "",
+            "type": "市场研报",  # 固定值, '市场研报'
+            "publish": "",  # 网站 url
+            "company": "",
+            "author": "",
+            "industry": "",
+            "summary": "",
+            "chart_data": "",
+
+            "confidence": 1.0,
+            "time": 0,  # 图的时间
+            "year": 0,  # 图的年份
+            "doc_score": 1.0,  # 默认填写1, 如果图片类型是需要的置 1.0，其余的则置 0.001
+            "stockcode": "",
+            "title": "",  # 文章 title
+            "chart_version": 1,
+            "doc_feature": "",
+            "tags": "",
+            "language": "1"  # 中文为1，英文为2
+        }
 
         row_key = row['id']
         img_oss = row['img_oss']
@@ -84,7 +84,8 @@ def send(x):
         img_json['id'] = 'ggg' + row_key + '_1'
         img_json['image_id'] = 'ggg' + row_key
         img_json['image_title'] = img_title
-        img_json['image_url'] = img_oss
+        img_json['image_url'] = img_oss.replace('bj-image.oss-cn-hangzhou-internal.aliyuncs.com',
+                                                'bj-image.oss-cn-hangzhou.aliyuncs.com')
         img_json['source_url'] = url
 
         if img_type is None:
@@ -119,9 +120,9 @@ def send(x):
         elif img_json['chart_type'] == "QR_CODE" or img_json['chart_type'] == "TEXT":
             img_json['doc_score'] = 0.1
         elif img_json['chart_type'] == "INFO_GRAPH":
-            img_json['doc_score'] = 0.5
+            img_json['doc_score'] = 0.4
         else:
-            img_json['doc_score'] = 1.0
+            img_json['doc_score'] = 0.7
 
         img_json['title'] = title
 
@@ -129,10 +130,11 @@ def send(x):
 
             # 累计1000条post一次数据
             if post_count < 1000:
-                post_imgs.append(img_json)
-                post_count += 1
+                if img_json['title'] != '':
+                    post_imgs.append(img_json)
+                    post_count += 1
             else:
-                requests.post('http://10.168.20.246:8080/solrweb/chartIndexByUpdate?origin_from=chart', json=post_imgs)
+                requests.post('http://10.24.235.15:8080/solrweb/chartIndexByUpdate', json=post_imgs)
                 post_imgs = []
                 post_count = 0
 
@@ -142,7 +144,7 @@ def send(x):
 
             result.append(new_row)
 
-    requests.post('http://10.168.20.246:8080/solrweb/chartIndexByUpdate?origin_from=chart', json=post_imgs)
+    requests.post('http://10.24.235.15:8080/solrweb/chartIndexByUpdate', json=post_imgs)
 
     return result
 
