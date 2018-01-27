@@ -4,6 +4,7 @@ import time
 import datetime
 import pshc
 import requests
+import hashlib
 
 
 """
@@ -68,7 +69,7 @@ def send(x):
             "stockcode": "",
             "title": "",  # 文章 title
             "chart_version": 1,
-            "doc_feature": "",
+            "doc_feature": "",  # 图片的特征，现在取的是直接算图片image_title的md5值，后期可能会变动
             "tags": "",
             "language": "1"  # 中文为1，英文为2
         }
@@ -76,10 +77,21 @@ def send(x):
         row_key = row['id']
         img_oss = row['img_oss']
         img_title = row['img_title'] if 'img_title' in row else ''
-        img_type = row['img_type'] if 'img_type' in row else ''
+        img_type = row['img_type'] if 'img_type' in row else '[]'
         title = row['title'] if 'title' in row else ''
         url = row['url'] if 'url' in row else ''
         index_state = row['index_state'] if 'index_state' in row else '0'
+
+        if img_title is None:
+            img_title = ''
+        if img_type is None:
+            img_type = '[]'
+        if title is None:
+            title = ''
+        if url is None:
+            url = ''
+        if index_state is None:
+            index_state = '0'
 
         img_json['id'] = 'ggg' + row_key + '_1'
         img_json['image_id'] = 'ggg' + row_key
@@ -88,8 +100,6 @@ def send(x):
                                                 'bj-image.oss-cn-hangzhou.aliyuncs.com')
         img_json['source_url'] = url
 
-        if img_type is None:
-            img_type = '[]'
         img_type = eval(img_type)
         if img_type:
             img_types = []
@@ -108,7 +118,7 @@ def send(x):
         img_time = '2018-01-01'
         img_datetime = datetime.datetime.strptime(img_time, '%Y-%m-%d')
 
-        img_json['time'] = time.mktime(img_datetime.timetuple())
+        img_json['time'] = int(time.mktime(img_datetime.timetuple()))
         img_json['year'] = img_datetime.year
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
@@ -125,11 +135,12 @@ def send(x):
             img_json['doc_score'] = 0.7
 
         img_json['title'] = title
+        img_json['doc_feature'] = hashlib.md5(bytes(img_title, 'utf-8')).hexdigest() if img_title != '' else ''
 
         if index_state != 1:
 
-            # 累计1000条post一次数据
-            if post_count < 1000:
+            # 累计300条post一次数据，不要累计太多，Post请求有长度限制
+            if post_count < 300:
                 if img_json['title'] != '':
                     post_imgs.append(img_json)
                     post_count += 1
