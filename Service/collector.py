@@ -121,8 +121,8 @@ class Collector:
     def tune_crf_tag(self, arg):
         """
         根据xgboost的预测权重值来调整CRF的tag。
-        当xgboost的预测权重值大于1时，而CRF的标签为useless时，将CRF的标签修为subject4;
-        当xgboost的预测权重值小于1时，而CRF的标签不为useless时，将CRF的标签修为useless;
+        当xgboost的预测权重值大于0.3时，而CRF的标签为useless时，将CRF的标签修为subject4;
+        当xgboost的预测权重值小于0.2时，而CRF的标签不为useless时，将CRF的标签修为useless;
         :param arg:
         :return:
         """
@@ -135,7 +135,7 @@ class Collector:
             weight = xgboost_result[i]['weight']
             if crf_tag == 'useless' and weight > 0.3:
                 new_crf_result.append({'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'subject4'})
-            # elif crf_tag != 'useless' and weight < 0.5:
+            # elif crf_tag != 'useless' and weight < 0.2:
             #     new_crf_result.append({'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'useless'})
             else:
                 new_crf_result.append(crf_result[i])
@@ -180,7 +180,7 @@ class Collector:
         # 处理brief
         brief = ''
         for i in range(len(crf_result)):
-            if crf_result[i]['type'] != 'useless':
+            if crf_result[i]['type'] != 'useless' and crf_result[i]['type'] != 'time':
                 brief += crf_result[i]['term']
         final_result["brief"] = brief
 
