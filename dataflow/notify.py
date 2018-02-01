@@ -10,7 +10,6 @@ import time
 from apscheduler.schedulers.blocking import BlockingScheduler
 import MongodbControl
 import MySQLControl
-from filelock import FileLock
 
 
 class MyEmail:
