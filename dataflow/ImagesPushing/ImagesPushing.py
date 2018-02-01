@@ -18,7 +18,7 @@ org.apache.hbase:hbase-common:1.1.12
 --jars 
 /mnt/disk1/data/chyan/work/post_image/spark-examples_2.10-1.6.4-SNAPSHOT.jar 
 --conf spark.pyspark.python=/mnt/disk1/data/chyan/virtualenv/bin/python 
---py-files /mnt/disk1/data/chyan/work/post_image/pshc.py /mnt/disk1/data/chyan/work/post_image/send_image.py
+--py-files /mnt/disk1/data/chyan/work/post_image/pshc.py /mnt/disk1/data/chyan/work/post_image/ImagesPushing.py
 
 yarn mode:
 spark-submit --master yarn --executor-memory 4G --executor-cores 2 --num-executors 4 
@@ -30,7 +30,7 @@ org.apache.hbase:hbase-common:1.1.12
 --jars 
 /mnt/disk1/data/chyan/work/post_image/spark-examples_2.10-1.6.4-SNAPSHOT.jar 
 --conf spark.pyspark.python=/mnt/disk1/data/chyan/virtualenv/bin/python 
---py-files /mnt/disk1/data/chyan/work/post_image/pshc.py /mnt/disk1/data/chyan/work/post_image/send_image.py
+--py-files /mnt/disk1/data/chyan/work/post_image/pshc.py /mnt/disk1/data/chyan/work/post_image/ImagesPushing.py
 """
 
 
