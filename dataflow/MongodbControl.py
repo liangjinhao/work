@@ -1,6 +1,5 @@
 import configparser
 from pymongo import MongoClient
-import pymongo
 import time
 
 CONFIG_FILE = "path.conf"
