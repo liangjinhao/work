@@ -5,7 +5,6 @@ from hbase.ttypes import *
 import hashlib
 import configparser
 import time
-from filelock import FileLock
 
 CONFIG_FILE = "path.conf"
 
