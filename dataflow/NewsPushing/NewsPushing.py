@@ -3,6 +3,7 @@ from pyspark.sql import SQLContext
 import datetime
 import pshc
 import HTML_Tools
+import time
 import requests
 
 """
@@ -34,6 +35,7 @@ org.apache.hbase:hbase-common:1.1.12
 
 def send(x):
 
+    t1 = time.time()
     for row in x:
 
         news_json = dict({
@@ -83,7 +85,10 @@ def send(x):
         else:
             news_json['time'] = 0
 
-        requests.post('http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news', json=news_json)
+        t2 = time.time()
+        print('ProcessTime: ', t2-t1)
+        requests.post('http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news', json=[news_json])
+        print('ProcessTime: ', time.time()-t1)
 
 
 conf = SparkConf().setAppName("Push_News")
@@ -110,10 +115,9 @@ catelog = {
     }
 }
 
-df = connector.get_df_from_hbase(catelog)
+partitionNum = 300
+startTime = datetime.datetime.strptime('2018/2/3 0:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s')
+df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=None, stop_time=None,
+                                 repartition_num=partitionNum, cached=True)
 df.show(10)
-
-partitionNum = 8
-tmp_rdd = df.rdd.repartition(partitionNum).cache()
-
-tmp_rdd.foreachPartition(lambda x: send(x))
+df.rdd.foreachPartition(lambda x: send(x))
