@@ -130,18 +130,23 @@ class PSHC(object):
             "hbase.mapreduce.inputtable": catelog['table']['name'],
             # Space delimited list of columns and column families to scan
             "hbase.mapreduce.scan.columns": ' '.join(i['cf']+':'+i['col'] for i in catelog['columns'].values()
-                                                     if i['cf'] != 'rowkey'),
-            "hbase.mapreduce.scan.row.start": start_row,
-            "hbase.mapreduce.scan.row.stop": stop_row,
-            "hbase.mapreduce.scan.timerange.start": start_time,
-            "hbase.mapreduce.scan.timerange.end": stop_time,
+                                                     if i['cf'] != 'rowkey')
         }
+
+        if start_row is not None:
+            conf["hbase.mapreduce.scan.row.start"] = start_row
+        if stop_row is not None:
+            conf["hbase.mapreduce.scan.row.stop"] = stop_row
+        if start_time is not None:
+            conf["hbase.mapreduce.scan.timerange.start"] = start_time
+        if stop_time is not None:
+            conf["hbase.mapreduce.scan.timerange.end"] = stop_time
 
         if repartition_num:
             hbase_rdd = self.sc.newAPIHadoopRDD(INPUTFORMATCLASS, INPUTKEYCLASS, INPUTVALUECLASS,
                                                 keyConverter=INKEYCONV,
                                                 valueConverter=INVALUECONV, conf=conf)\
-                .repartition(2000)\
+                .repartition(repartition_num)\
                 # .persist(StorageLevel.DISK_ONLY)
         else:
             hbase_rdd = self.sc.newAPIHadoopRDD(INPUTFORMATCLASS, INPUTKEYCLASS, INPUTVALUECLASS,
