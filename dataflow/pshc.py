@@ -1,4 +1,5 @@
 from pyspark.sql.types import *
+from pyspark import StorageLevel
 import json
 import datetime
 
@@ -93,7 +94,8 @@ class PSHC(object):
         self.sparkSession = spark_session
         self.cache_rdd = {}
 
-    def get_df_from_hbase(self, catelog, cached=True):
+    def get_df_from_hbase(self, catelog, start_row=None, stop_row=None, start_time=None, stop_time=None,
+                          repartition_num=None, cached=False):
         """
         Get dataframe from Hbase
         :param catelog: json , eg:
@@ -109,14 +111,42 @@ class PSHC(object):
               "col7":{"cf":"cf7", "col":"col7", "type":"datetime"}
             }
         }
+        :param start_row
+        :param stop_row
+        :param start_time
+        :param stop_time
+        :param repartition_num
         :param cached:
         :return: :class:`DataFrame`
         """
         conf = self.conf.copy()
         table = catelog['table']['name']
+
         conf['hbase.mapreduce.inputtable'] = table
-        hbase_rdd = self.sc.newAPIHadoopRDD(INPUTFORMATCLASS, INPUTKEYCLASS, INPUTVALUECLASS, keyConverter=INKEYCONV,
-                                            valueConverter=INVALUECONV, conf=conf)
+
+        # hbase config
+        conf = {
+            "hbase.zookeeper.quorum": self.conf['hbase.zookeeper.quorum'],
+            "hbase.mapreduce.inputtable": catelog['table']['name'],
+            # Space delimited list of columns and column families to scan
+            "hbase.mapreduce.scan.columns": ' '.join(i['cf']+':'+i['col'] for i in catelog['columns'].values()
+                                                     if i['cf'] != 'rowkey'),
+            "hbase.mapreduce.scan.row.start": start_row,
+            "hbase.mapreduce.scan.row.stop": stop_row,
+            "hbase.mapreduce.scan.timerange.start": start_time,
+            "hbase.mapreduce.scan.timerange.end": stop_time,
+        }
+
+        if repartition_num:
+            hbase_rdd = self.sc.newAPIHadoopRDD(INPUTFORMATCLASS, INPUTKEYCLASS, INPUTVALUECLASS,
+                                                keyConverter=INKEYCONV,
+                                                valueConverter=INVALUECONV, conf=conf)\
+                .repartition(2000)\
+                # .persist(StorageLevel.DISK_ONLY)
+        else:
+            hbase_rdd = self.sc.newAPIHadoopRDD(INPUTFORMATCLASS, INPUTKEYCLASS, INPUTVALUECLASS,
+                                                keyConverter=INKEYCONV,
+                                                valueConverter=INVALUECONV, conf=conf)
 
         def hrdd_to_rdd(hbase_rdds):
             new_rdds = []
