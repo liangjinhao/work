@@ -116,8 +116,9 @@ catelog = {
 }
 
 partitionNum = 300
-startTime = datetime.datetime.strptime('2018/2/3 0:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s')
+startTime = datetime.datetime.strptime('2018-2-3 0:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s')
 df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=None, stop_time=None,
                                  repartition_num=partitionNum, cached=True)
 df.show(10)
+print('======count=======', df.count())
 df.rdd.foreachPartition(lambda x: send(x))
