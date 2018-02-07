@@ -8,35 +8,13 @@ import hashlib
 
 
 """
-local mode:
-spark-submit --master local --driver-memory 4G --executor-cores 2 --num-executors 4 
---packages 
-org.apache.hbase:hbase:1.1.12,
-org.apache.hbase:hbase-server:1.1.12,
-org.apache.hbase:hbase-client:1.1.12,
-org.apache.hbase:hbase-common:1.1.12
---jars 
-/mnt/disk1/data/chyan/work/post_image/spark-examples_2.10-1.6.4-SNAPSHOT.jar 
---conf spark.pyspark.python=/mnt/disk1/data/chyan/virtualenv/bin/python 
---py-files /mnt/disk1/data/chyan/work/post_image/pshc.py /mnt/disk1/data/chyan/work/post_image/ImagesPushing.py
-
-yarn mode:
-spark-submit --master yarn --executor-memory 4G --executor-cores 2 --num-executors 4 
---packages 
-org.apache.hbase:hbase:1.1.12,
-org.apache.hbase:hbase-server:1.1.12,
-org.apache.hbase:hbase-client:1.1.12,
-org.apache.hbase:hbase-common:1.1.12
---jars 
-/mnt/disk1/data/chyan/work/post_image/spark-examples_2.10-1.6.4-SNAPSHOT.jar 
---conf spark.pyspark.python=/mnt/disk1/data/chyan/virtualenv/bin/python 
---py-files /mnt/disk1/data/chyan/work/post_image/pshc.py /mnt/disk1/data/chyan/work/post_image/ImagesPushing.py
+该脚本采用Spark读取HBase的img_data表里的数据，并通过POST请求发送到Solr服务上去
 """
+
+POST_URL = 'http://10.24.235.15:8080/solrweb/chartIndexByUpdate'  # Solr接受post请求的地址
 
 
 def send(x):
-
-    result = []
 
     post_imgs = []
     post_count = 0
@@ -54,7 +32,7 @@ def send(x):
             "source_url": "",  # 文章 url
             "chart_type": "",  # 图片类型, 比如: 'LINE_AREA', 'LINE_COLUMN'
             "bitmap_type": "",
-            "type": "市场研报",  # 固定值, '市场研报'
+            "type": "新闻资讯",  # 固定值, '新闻资讯'
             "publish": "",  # 网站 url
             "company": "",
             "author": "",
@@ -80,7 +58,6 @@ def send(x):
         img_type = row['img_type'] if 'img_type' in row else '[]'
         title = row['title'] if 'title' in row else ''
         url = row['url'] if 'url' in row else ''
-        index_state = row['index_state'] if 'index_state' in row else '0'
 
         if img_title is None:
             img_title = ''
@@ -90,8 +67,6 @@ def send(x):
             title = ''
         if url is None:
             url = ''
-        if index_state is None:
-            index_state = '0'
 
         img_json['id'] = 'ggg' + row_key + '_1'
         img_json['image_id'] = 'ggg' + row_key
@@ -115,9 +90,7 @@ def send(x):
 
         img_json['publish'] = url.lstrip('https?://').split('/')[0]
 
-        img_time = '2018-01-01'
-        img_datetime = datetime.datetime.strptime(img_time, '%Y-%m-%d')
-
+        img_datetime = datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
         img_json['time'] = int(time.mktime(img_datetime.timetuple()))
         img_json['year'] = img_datetime.year
 
@@ -137,63 +110,49 @@ def send(x):
         img_json['title'] = title
         img_json['doc_feature'] = hashlib.md5(bytes(img_title, 'utf-8')).hexdigest() if img_title != '' else ''
 
-        if index_state != 1:
+        # 累计300条post一次数据，不要累计太多，Solr端的Post请求有长度限制
+        if post_count < 300:
+            if img_json['image_title'] != '':
+                post_imgs.append(img_json)
+                post_count += 1
+        else:
+            requests.post(POST_URL, json=post_imgs)
+            post_imgs = []
+            post_count = 0
 
-            # 累计300条post一次数据，不要累计太多，Post请求有长度限制
-            if post_count < 300:
-                if img_json['image_title'] != '':
-                    post_imgs.append(img_json)
-                    post_count += 1
-            else:
-                requests.post('http://10.24.235.15:8080/solrweb/chartIndexByUpdate', json=post_imgs)
-                post_imgs = []
-                post_count = 0
-
-            new_row = dict()
-            new_row['id'] = row_key
-            new_row['index_state'] = '1'
-
-            result.append(new_row)
-
-    requests.post('http://10.24.235.15:8080/solrweb/chartIndexByUpdate', json=post_imgs)
-
-    return result
+    requests.post(POST_URL, json=post_imgs)
 
 
-conf = SparkConf().setAppName("Send_Image")
-sc = SparkContext(conf=conf)
-sqlContext = SQLContext(sc)
-connector = pshc.PSHC(sc, sqlContext)
+if __name__ == '__main__':
 
-catelog = {
-    "table": {"namespace": "default", "name": "img_data"},
-    "rowkey": "id",
-    "columns": {
-        "id": {"cf": "rowkey", "col": "key", "type": "string"},
-        "img_format": {"cf": "info", "col": "img_format", "type": "string"},
-        "img_oss": {"cf": "info", "col": "img_oss", "type": "string"},
-        "img_title": {"cf": "info", "col": "img_title", "type": "string"},
-        "img_type": {"cf": "info", "col": "img_type", "type": "string"},
-        "img_url": {"cf": "info", "col": "img_url", "type": "string"},
-        "title": {"cf": "info", "col": "title", "type": "string"},
-        "url": {"cf": "info", "col": "url", "type": "string"},
-        "index_state": {"cf": "info", "col": "index_state", "type": "string"},
+    conf = SparkConf().setAppName("Send_Image")
+    sc = SparkContext(conf=conf)
+    sqlContext = SQLContext(sc)
+    connector = pshc.PSHC(sc, sqlContext)
+
+    catelog = {
+        "table": {"namespace": "default", "name": "img_data"},
+        "rowkey": "id",
+        "columns": {
+            "id": {"cf": "rowkey", "col": "key", "type": "string"},
+            "img_format": {"cf": "info", "col": "img_format", "type": "string"},
+            "img_oss": {"cf": "info", "col": "img_oss", "type": "string"},
+            "img_title": {"cf": "info", "col": "img_title", "type": "string"},
+            "img_type": {"cf": "info", "col": "img_type", "type": "string"},
+            "img_url": {"cf": "info", "col": "img_url", "type": "string"},
+            "title": {"cf": "info", "col": "title", "type": "string"},
+            "url": {"cf": "info", "col": "url", "type": "string"},
+            "index_state": {"cf": "info", "col": "index_state", "type": "string"},
+        }
     }
-}
 
-df = connector.get_df_from_hbase(catelog)
-df.show(10)
-df.filter("index_state IS null OR index_state != 1")
-df.show(10)
+    df = connector.get_df_from_hbase(catelog)
+    df.show(10)
 
-tmp_rdd = df.rdd
-countNum = tmp_rdd.count()
-partitionNum = countNum / 10000 + 1
+    tmp_rdd = df.rdd
+    countNum = tmp_rdd.count()
+    partitionNum = countNum / 10000 + 1
 
-tmp_rdd2 = tmp_rdd.repartition(partitionNum).cache()
-tmp_rdd2.count()
-
-tmp_rdd2.mapPartitions(lambda x: send(x))
-new_df = sqlContext.createDataFrame(tmp_rdd2, connector.catelog_to_schema(catelog))
-new_df.show(10)
-connector.save_df_to_hbase(new_df, catelog)
+    rdd = tmp_rdd.repartition(partitionNum).cache()
+    rdd.count()
+    rdd.foreachPartition(lambda x: send(x))
