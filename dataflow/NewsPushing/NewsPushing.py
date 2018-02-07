@@ -117,10 +117,11 @@ catelog = {
     }
 }
 
-partitionNum = 300
-startTime = datetime.datetime.strptime('2018-2-3 0:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s')
-df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=None, stop_time=None,
-                                 repartition_num=partitionNum, cached=True)
+startTime = datetime.datetime.strptime('2018-1-31 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+stopTime = datetime.datetime.strptime('2018-05-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+
+df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime, stop_time=stopTime,
+                                 repartition_num=None, cached=True)
 df.show(10)
 print('======count=======', df.count())
 df.rdd.foreachPartition(lambda x: send(x))
