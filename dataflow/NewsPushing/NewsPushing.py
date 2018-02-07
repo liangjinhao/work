@@ -7,6 +7,8 @@ import time
 import requests
 
 """
+该脚本采用Spark读取HBase的news_data表里的数据，并通过POST请求发送到Solr服务上去
+
 local mode:
 spark-submit --master local --driver-memory 4G --executor-cores 2 --num-executors 4 
 --packages 
