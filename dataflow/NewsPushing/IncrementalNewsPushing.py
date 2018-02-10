@@ -1,5 +1,5 @@
 import datetime
-import NewsPushing.HTML_Tools as HTML_Tools
+import Utils
 import time
 import redis
 import requests
@@ -100,20 +100,20 @@ def send(x):
             news_json['id'] = row['id']
             news_json['author'] = row['author']
 
-            news_json['author'] = HTML_Tools.HTMLTools().author_norm(row['author']) \
+            news_json['author'] = Utils.author_norm(row['author']) \
                 if row['author'] is not None else row['author']
 
             news_json['channel'] = row['channel']
             news_json['contain_image'] = row['contain_image']
 
-            news_json['content'] = HTML_Tools.HTMLTools().content_norm(row['content']) \
+            news_json['content'] = Utils.content_norm(row['content']) \
                 if row['content'] is not None else row['content']
 
             news_json['crawl_time'] = row['crawl_time']
             news_json['brief'] = row['dese']
             news_json['source_url'] = row['laiyuan']
 
-            normed_publish_time = HTML_Tools.HTMLTools().time_norm(row['publish_time'])
+            normed_publish_time = Utils.time_norm(row['publish_time'])
             news_json['publish_time'] = normed_publish_time if normed_publish_time != '' else row['crawl_time']
 
             news_json['source_name'] = row['source']
