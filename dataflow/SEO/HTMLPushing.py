@@ -422,7 +422,8 @@ def add_file_info(x):
             if isinstance(eval(legends), list):
                 for i in eval(legends):
                     text = i['text']
-                    new_legends.append(text)
+                    if text is not None:
+                        new_legends.append(text)
             else:
                 print(row)
 
