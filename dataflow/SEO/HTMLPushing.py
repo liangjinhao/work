@@ -517,13 +517,12 @@ if __name__ == '__main__':
 
     hb_charts_df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
                                                stop_time=stopTime, repartition_num=None, cached=True)
-    hb_charts_df.show(10)
 
     hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
 
     hb_charts_hibor_df = sqlContext.sparkSession.createDataFrame(hb_charts_hibor_rdd)
-    hb_charts_hibor_df.show()
+
     hb_charts_hibor_df.registerTempTable('table1')
 
     file_to_img_catelog = {
@@ -537,8 +536,11 @@ if __name__ == '__main__':
         .persist(storageLevel=StorageLevel.DISK_ONLY)
     file_to_img_df = sqlContext.sparkSession.createDataFrame(file_to_img_rdd,
                                                              schema=connector.catelog_to_schema(file_to_img_catelog))
-    file_to_img_df.show()
     file_to_img_df.registerTempTable('table2')
+
+    hb_charts_df.show(10)
+    hb_charts_hibor_df.show()
+    file_to_img_df.show()
 
     html_df = sqlContext.sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
                                           "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
@@ -557,13 +559,14 @@ if __name__ == '__main__':
             "img_url": {"cf": "data", "col": "img_url", "type": "string"},
             "create_time": {"cf": "data", "col": "create_time", "type": "string"},
             "fileId": {"cf": "data", "col": "fileId", "type": "string"},
+            "fileUrl": {"cf": "data", "col": "fileUrl", "type": "string"},
+            "peer_imgs": {"cf": "data", "col": "peer_imgs", "type": "string"},
             "f_typetitle": {"cf": "data", "col": "f_typetitle", "type": "string"},
             "f_rating": {"cf": "data", "col": "f_rating", "type": "string"},
             "f_stockname": {"cf": "data", "col": "f_stockname", "type": "string"},
             "f_author": {"cf": "data", "col": "f_author", "type": "string"},
             "f_publish": {"cf": "data", "col": "f_publish", "type": "string"},
             "f_title": {"cf": "data", "col": "f_title", "type": "string"},
-            "f_file_url": {"cf": "data", "col": "f_file_url", "type": "string"},
             "f_industry_id": {"cf": "data", "col": "f_industry_id", "type": "string"},
         }
     }
