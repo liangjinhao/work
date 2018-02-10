@@ -538,14 +538,14 @@ if __name__ == '__main__':
                                                              schema=connector.catelog_to_schema(file_to_img_catelog))
     file_to_img_df.registerTempTable('table2')
 
-    hb_charts_df.show(10)
+    hb_charts_df.show()
     hb_charts_hibor_df.show()
     file_to_img_df.show()
 
     html_df = sqlContext.sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
                                           "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
                                           "table1.f_rating, table1.f_stockname, table1.f_author, table1.f_publish, "
-                                          "table1.f_title, table1.f_industry_id, table2.peer_imgs"
+                                          "table1.f_title, table1.f_industry_id, table2.peer_imgs "
                                           "FROM table1, table2 WHERE table1.fileId == table2.fileId")
     html_df.show()
 
