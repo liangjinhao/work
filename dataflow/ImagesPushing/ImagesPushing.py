@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
     tmp_rdd = df.rdd
     countNum = tmp_rdd.count()
-    partitionNum = countNum / 10000 + 1
+    partitionNum = int(countNum / 10000 + 1)
 
     rdd = tmp_rdd.repartition(partitionNum).cache()
     rdd.count()
