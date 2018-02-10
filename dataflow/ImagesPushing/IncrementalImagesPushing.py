@@ -8,6 +8,7 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
 from hbase.Hbase import *
+import Utils
 
 
 """
@@ -51,21 +52,11 @@ def get_hbase_row(rowkey):
 
 
 def send(x):
-    """
-    将数据作对应字段转换后 post 到 Solr 服务
-    :param x:
-    :return:
-    """
-
     post_imgs = []
     post_count = 0
 
     for row in x:
 
-        if row is {}:
-            continue
-
-        # Solr 里的图片的字段，将 Hbase 中存储的图片信息转换到对应字段上
         img_json = {
             "id": "",  # ggg + 图片url的md5 + _1
             "image_id": "",  # ggg + 图片url的md5
@@ -135,9 +126,10 @@ def send(x):
 
         img_json['publish'] = url.lstrip('https?://').split('/')[0]
 
-        img_datetime = datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d  %H:%M:%S')
-        img_json['time'] = int(time.mktime(img_datetime.timetuple()))
-        img_json['year'] = img_datetime.year
+        if row['publish_time'] is not None:
+            img_datetime = datetime.datetime.strptime(Utils.time_norm(row['publish_time']), '%Y-%m-%d %H:%M:%S')
+            img_json['time'] = int(time.mktime(img_datetime.timetuple()))
+            img_json['year'] = img_datetime.year
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,
