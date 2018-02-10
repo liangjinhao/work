@@ -397,14 +397,14 @@ def add_file_info(x):
             "legends": '',
             "img_url": '',
             "create_time": '',
-            "fileId": 'fileId',
+            "fileId": '',
+            "fileUrl": '',
             "f_typetitle": '',
             "f_rating": '',
             "f_stockname": '',
             "f_author": '',
             "f_publish": '',
             "f_title": '',
-            "f_file_url": '',
             "f_industry_id": '',
         })
 
@@ -413,6 +413,7 @@ def add_file_info(x):
         new_row['img_url'] = row['pngFile']
         new_row['title'] = row['title']
         new_row['fileId'] = row['fileId']
+        new_row['fileUrl'] = row['fileUrl']
 
         legends = row['legends']
         new_legends = []
@@ -434,16 +435,19 @@ def add_file_info(x):
         cursor = connection.cursor()
         sql = "SELECT * FROM " + db + "." + table + " WHERE id = " + new_row['fileId'] + ";"
         cursor.execute(sql)
-        row = cursor.fetchone()
+        cursor_row = cursor.fetchone()
 
-        new_row["f_typetitle"] = row['typetitle'] if 'typetitle' in row else ''
-        new_row["f_rating"] = row['rating'] if 'rating' in row else ''
-        new_row["f_stockname"] = row['stockname'] if 'stockname' in row else ''
-        new_row["f_author"] = row['author'] if 'author' in row else ''
-        new_row["f_publish"] = row['publish'] if 'publish' in row else ''
-        new_row["f_title"] = row['title'] if 'title' in row else ''
-        new_row["f_file_url"] = row['file_url'] if 'file_url' in row else ''
-        new_row["f_industry_id"] = row['industry_id'] if 'industry_id' in row else ''
+        # 如果在 Hibor 表中没找到该数据，则跳过
+        if cursor_row is None:
+            continue
+
+        new_row["f_typetitle"] = cursor_row['typetitle'] if 'typetitle' in cursor_row else ''
+        new_row["f_rating"] = cursor_row['rating'] if 'rating' in cursor_row else ''
+        new_row["f_stockname"] = cursor_row['stockname'] if 'stockname' in cursor_row else ''
+        new_row["f_author"] = cursor_row['author'] if 'author' in cursor_row else ''
+        new_row["f_publish"] = cursor_row['publish'] if 'publish' in cursor_row else ''
+        new_row["f_title"] = cursor_row['title'] if 'title' in cursor_row else ''
+        new_row["f_industry_id"] = cursor_row['industry_id'] if 'industry_id' in cursor_row else ''
 
         if new_row["f_industry_id"] is not None and new_row["f_industry_id"] in INDUSTRY_MAPPING:
             new_row["f_industry_id"] = INDUSTRY_MAPPING[new_row["f_industry_id"]]
@@ -458,14 +462,12 @@ def add_file_info(x):
 def extract(x):
     result = []
     for row in x:
-        new_row = dict()
-        new_row['fileId'] = row['fileId']
-        new_row['img_url'] = row['img_url']
-        result.append(new_row)
+        result.append((row['fileId'], row['img_url']))
     return result
 
 
 if __name__ == '__main__':
+
     conf = SparkConf().setAppName("Push_News")
     sc = SparkContext(conf=conf)
     sqlContext = SQLContext(sc)
@@ -486,7 +488,7 @@ if __name__ == '__main__':
             # "deleted": {"cf": "data", "col": "deleted", "type": "string"},
             "fileId": {"cf": "data", "col": "fileId", "type": "string"},
             # "filePath": {"cf": "data", "col": "filePath", "type": "string"},
-            # "fileUrl": {"cf": "data", "col": "fileUrl", "type": "string"},  # PDF文件url
+            "fileUrl": {"cf": "data", "col": "fileUrl", "type": "string"},  # PDF文件url
             # "fonts": {"cf": "data", "col": "fonts", "type": "string"},
             # "hAxis": {"cf": "data", "col": "hAxis", "type": "string"},  # X轴
             # "hAxisTextD": {"cf": "data", "col": "hAxisTextD", "type": "string"},  # X轴上方文本
@@ -519,9 +521,6 @@ if __name__ == '__main__':
 
     hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
-    file_to_img_rdd = hb_charts_hibor_rdd.mapPartitions(extract)\
-        .reduceByKey(lambda a, b: a + ',' + b)\
-        .persist(storageLevel=StorageLevel.DISK_ONLY)
 
     hb_charts_hibor_df = sqlContext.sparkSession.createDataFrame(hb_charts_hibor_rdd)
     hb_charts_hibor_df.show()
@@ -533,15 +532,18 @@ if __name__ == '__main__':
             "peer_imgs": {"cf": "data", "col": "img_url", "type": "string"},
         }
     }
+    file_to_img_rdd = hb_charts_hibor_rdd.mapPartitions(extract)\
+        .reduceByKey(lambda a, b: a + ',' + b)\
+        .persist(storageLevel=StorageLevel.DISK_ONLY)
     file_to_img_df = sqlContext.sparkSession.createDataFrame(file_to_img_rdd,
                                                              schema=connector.catelog_to_schema(file_to_img_catelog))
     file_to_img_df.show()
     file_to_img_df.registerTempTable('table2')
 
     html_df = sqlContext.sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
-                                          "table1.create_time, table1.fileId, table1.f_typetitle, table1.f_rating, "
-                                          "table1.f_stockname, table1.f_author, table1.f_publish, table1.f_title, "
-                                          "table1.f_file_url, table1.f_industry_id, table2.peer_imgs"
+                                          "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
+                                          "table1.f_rating, table1.f_stockname, table1.f_author, table1.f_publish, "
+                                          "table1.f_title, table1.f_industry_id, table2.peer_imgs"
                                           "FROM table1, table2 WHERE table1.fileId == table2.fileId")
     html_df.show()
 
