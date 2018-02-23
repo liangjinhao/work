@@ -415,7 +415,7 @@ def add_file_info(x):
         new_row['fileId'] = row['fileId']
         new_row['fileUrl'] = row['fileUrl']
 
-        legends = row['legends']
+        legends = row['legends'] if 'legends' in row else row['legends_str']
         new_legends = []
 
         if legends is not None and legends is not []:
@@ -527,12 +527,18 @@ if __name__ == '__main__':
     hb_charts_df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
                                                stop_time=stopTime, repartition_num=None, cached=True)
 
+    # hb_charts_df = sparkSession.sql('SELECT * FROM abc.hb_charts')
+
+    hb_charts_df.show()
+    # print('----hb_charts_df COUNT:---\n', hb_charts_df.count())
+
     hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
 
     hb_charts_hibor_df = sparkSession.createDataFrame(hb_charts_hibor_rdd)
 
-    hb_charts_hibor_df.registerTempTable('table1')
+    hb_charts_hibor_df.show()
+    print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
 
     file_to_img_catelog = {
         "columns": {
@@ -546,14 +552,13 @@ if __name__ == '__main__':
     file_to_img_df = sparkSession.createDataFrame(file_to_img_rdd,
                                                   schema=connector.catelog_to_schema(file_to_img_catelog))
 
-    file_to_img_df.write.saveAsTable('file_to_img', mode='overwrite')
-
-    file_to_img_df.registerTempTable('table2')
-
-    hb_charts_df.show()
-    hb_charts_hibor_df.show()
-    print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
     file_to_img_df.show()
+    # print('----file_to_img_df COUNT:---\n', file_to_img_df.count())
+
+    file_to_img_df.write.saveAsTable('abc.file_to_img', mode='overwrite')
+
+    hb_charts_hibor_df.registerTempTable('table1')
+    file_to_img_df.registerTempTable('table2')
 
     html_df = sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
                                "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
@@ -561,6 +566,7 @@ if __name__ == '__main__':
                                "table1.f_title, table1.f_industry_id, table2.peer_imgs "
                                "FROM table1, table2 WHERE table1.fileId == table2.fileId")
     html_df.show()
+    # print('----html_df COUNT:---\n', html_df.count())
 
     html_catelog = {
         "table": {"namespace": "default", "name": "SEO_htmls"},
