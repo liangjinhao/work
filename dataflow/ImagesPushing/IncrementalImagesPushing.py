@@ -3,7 +3,6 @@ import datetime
 import time
 import redis
 import requests
-import concurrent.futures
 from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
@@ -171,12 +170,12 @@ if __name__ == '__main__':
             send(news_list)
             count = 0
             news_list = []
-            print('Redis 队列中无数据，等待5分钟再取')
-            time.sleep(5 * 60)
+            print('Redis 队列中无数据，等待2分钟再取')
+            time.sleep(2 * 60)
         else:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
-            if count < 1000:
+            if count < 100:
                 news_list.append(news)
             else:
                 send(news_list)
