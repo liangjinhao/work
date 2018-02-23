@@ -97,7 +97,7 @@ def time_norm(string):
 
 def author_norm(string):
     additionals = ['记者', '作者', '编辑', '责任编辑', '分析师', '来源']
-    return ''.join([j for j in [i for i in re.split('[\n\r :：（）()]', string) if i != ''] if j not in additionals])
+    return ' '.join([j for j in [i for i in re.split('[\n\r :：（）()]', string) if i != ''] if j not in additionals])
 
 
 def content_norm(html):
