@@ -399,13 +399,13 @@ def add_file_info(x):
             "create_time": '',
             "fileId": '',
             "fileUrl": '',
-            "f_typetitle": '',
-            "f_rating": '',
-            "f_stockname": '',
-            "f_author": '',
-            "f_publish": '',
-            "f_title": '',
-            "f_industry_id": '',
+            "typetitle": '',
+            "rating": '',
+            "stockname": '',
+            "author": '',
+            "publish": '',
+            "file_title": '',
+            "industry_id": '',
         })
 
         new_row['id'] = row['id']
@@ -442,23 +442,61 @@ def add_file_info(x):
         if cursor_row is None:
             continue
 
-        new_row["f_typetitle"] = cursor_row['typetitle'] if 'typetitle' in cursor_row else ''
-        new_row["f_rating"] = cursor_row['rating'] if 'rating' in cursor_row else ''
-        new_row["f_stockname"] = cursor_row['stockname'] if 'stockname' in cursor_row else ''
-        new_row["f_author"] = cursor_row['author'] if 'author' in cursor_row else ''
-        new_row["f_publish"] = cursor_row['publish'] if 'publish' in cursor_row else ''
-        new_row["f_title"] = cursor_row['title'] if 'title' in cursor_row else ''
-        new_row["f_industry_id"] = cursor_row['industry_id'] if 'industry_id' in cursor_row else ''
+        new_row["typetitle"] = cursor_row['typetitle'] if 'typetitle' in cursor_row else ''
+        new_row["rating"] = cursor_row['rating'] if 'rating' in cursor_row else ''
+        new_row["stockname"] = cursor_row['stockname'] if 'stockname' in cursor_row else ''
+        new_row["author"] = cursor_row['author'] if 'author' in cursor_row else ''
+        new_row["publish"] = cursor_row['publish'] if 'publish' in cursor_row else ''
+        new_row["file_title"] = cursor_row['title'] if 'title' in cursor_row else ''
+        new_row["industry_id"] = cursor_row['industry_id'] if 'industry_id' in cursor_row else ''
 
-        if new_row["f_industry_id"] is not None and new_row["f_industry_id"] in INDUSTRY_MAPPING:
-            new_row["f_industry_id"] = INDUSTRY_MAPPING[new_row["f_industry_id"]]
+        if new_row["industry_id"] is not None and new_row["industry_id"] in INDUSTRY_MAPPING:
+            new_row["industry_id"] = INDUSTRY_MAPPING[new_row["industry_id"]]
         else:
-            new_row["f_industry_id"] = '其他'
+            new_row["industry_id"] = '其他'
             # 如果该张图片无行业类型，则忽略
             continue
 
         result.append(new_row)
 
+    return result
+
+
+def norm_data(x):
+    result = []
+    for row in x:
+        if row['industry_id'] is None or row['industry_id'] not in INDUSTRY_MAPPING:
+            continue
+        else:
+            new_row = dict()
+            new_row['id'] = row['id']
+            new_row['create_time'] = row['create_time']
+            new_row['img_url'] = row['pngFile']
+            new_row['title'] = row['title']
+            new_row['fileId'] = row['fileId']
+            new_row['fileUrl'] = row['fileUrl']
+            new_row["typetitle"] = row['typetitle']
+            new_row["rating"] = row['rating']
+            new_row["stockname"] = row['stockname']
+            new_row["author"] = row['author']
+            new_row["publish"] = row['publish']
+            new_row["file_title"] = row['file_title']
+            new_row["industry_id"] = INDUSTRY_MAPPING[row["industry_id"]]
+
+            legends = row['legends_str']
+            new_legends = []
+            if legends is not None and legends is not []:
+                if isinstance(eval(legends), list):
+                    for i in eval(legends):
+                        text = i['text'] if 'text' in i else str(i)
+                        if text is not None:
+                            new_legends.append(text)
+            if new_legends is not []:
+                new_row['legends'] = ','.join(new_legends)
+            else:
+                new_row['legends'] = ''
+
+            result.append(new_row)
     return result
 
 
@@ -521,19 +559,27 @@ if __name__ == '__main__':
         }
     }
 
-    startTime = datetime.datetime.strptime('2018-2-9 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-    stopTime = datetime.datetime.strptime('2018-05-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    # startTime = datetime.datetime.strptime('2018-2-9 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    # stopTime = datetime.datetime.strptime('2018-05-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    #
+    # hb_charts_df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
+    #                                            stop_time=stopTime, repartition_num=None, cached=True)
+    # hb_charts_df.show()
+    # # print('----hb_charts_df COUNT:---\n', hb_charts_df.count())
+    #
+    # hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
+    #     .persist(storageLevel=StorageLevel.DISK_ONLY)
 
-    hb_charts_df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
-                                               stop_time=stopTime, repartition_num=None, cached=True)
+    hb_charts_df = sparkSession.sql('SELECT * FROM abc.hb_charts')
+    hibor_df = sparkSession.sql('SELECT * FROM abc.hibor')
 
-    # hb_charts_df = sparkSession.sql('SELECT * FROM abc.hb_charts')
+    df1 = hb_charts_df.registerTempTable('df1')
+    df2 = hibor_df.registerTempTable('df2')
 
-    hb_charts_df.show()
-    # print('----hb_charts_df COUNT:---\n', hb_charts_df.count())
-
-    hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
-        .persist(storageLevel=StorageLevel.DISK_ONLY)
+    hb_charts_hibor_tmp = sparkSession.sql("SELECT df1.*, df2.typetitle, df2.rating, df2.stockname, df2.author, "
+                                           "df2.publish, df2.title as file_title, df2.industry_id "
+                                           "FROM df1 JOIN df2 ON df1.id = df2.id")
+    hb_charts_hibor_rdd = hb_charts_hibor_tmp.rdd.mapPartitions(norm_data).persist(storageLevel=StorageLevel.DISK_ONLY)
 
     hb_charts_hibor_df = sparkSession.createDataFrame(hb_charts_hibor_rdd)
 
@@ -560,11 +606,8 @@ if __name__ == '__main__':
     hb_charts_hibor_df.registerTempTable('table1')
     file_to_img_df.registerTempTable('table2')
 
-    html_df = sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
-                               "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
-                               "table1.f_rating, table1.f_stockname, table1.f_author, table1.f_publish, "
-                               "table1.f_title, table1.f_industry_id, table2.peer_imgs "
-                               "FROM table1, table2 WHERE table1.fileId == table2.fileId")
+    html_df = sparkSession.sql("SELECT table1.*, table2.peer_imgs "
+                               "FROM table1 JOIN table2 ON table1.fileId == table2.fileId")
     html_df.show()
     # print('----html_df COUNT:---\n', html_df.count())
 
@@ -580,13 +623,13 @@ if __name__ == '__main__':
             "fileId": {"cf": "data", "col": "fileId", "type": "string"},
             "fileUrl": {"cf": "data", "col": "fileUrl", "type": "string"},
             "peer_imgs": {"cf": "data", "col": "peer_imgs", "type": "string"},
-            "f_typetitle": {"cf": "data", "col": "f_typetitle", "type": "string"},
-            "f_rating": {"cf": "data", "col": "f_rating", "type": "string"},
-            "f_stockname": {"cf": "data", "col": "f_stockname", "type": "string"},
-            "f_author": {"cf": "data", "col": "f_author", "type": "string"},
-            "f_publish": {"cf": "data", "col": "f_publish", "type": "string"},
-            "f_title": {"cf": "data", "col": "f_title", "type": "string"},
-            "f_industry_id": {"cf": "data", "col": "f_industry_id", "type": "string"},
+            "typetitle": {"cf": "data", "col": "typetitle", "type": "string"},
+            "rating": {"cf": "data", "col": "rating", "type": "string"},
+            "stockname": {"cf": "data", "col": "stockname", "type": "string"},
+            "author": {"cf": "data", "col": "author", "type": "string"},
+            "publish": {"cf": "data", "col": "publish", "type": "string"},
+            "file_title": {"cf": "data", "col": "file_title", "type": "string"},
+            "industry_id": {"cf": "data", "col": "industry_id", "type": "string"},
         }
     }
     connector.save_df_to_hbase(html_df, html_catelog)
