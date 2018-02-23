@@ -5,7 +5,7 @@ import datetime
 import pshc
 import requests
 import hashlib
-import U
+
 
 """
 该脚本采用Spark读取HBase的img_data表里的数据，并通过POST请求发送到Solr服务上去
@@ -148,13 +148,17 @@ if __name__ == '__main__':
         }
     }
 
-    df = connector.get_df_from_hbase(catelog)
+    startTime = datetime.datetime.strptime('2018-1-31 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    stopTime = datetime.datetime.strptime('2018-05-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+
+    df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime, stop_time=stopTime,
+                                     repartition_num=None, cached=True)
     df.show(10)
 
-    tmp_rdd = df.rdd
-    countNum = tmp_rdd.count()
-    partitionNum = int(countNum / 10000 + 1)
+    # tmp_rdd = df.rdd
+    # countNum = tmp_rdd.count()
+    # partitionNum = int(countNum / 10000 + 1)
+    # rdd = tmp_rdd.repartition(partitionNum).cache()
 
-    rdd = tmp_rdd.repartition(partitionNum).cache()
-    rdd.count()
-    rdd.foreachPartition(lambda x: send(x))
+    print('======count=======', df.count())
+    df.rdd.foreachPartition(lambda x: send(x))
