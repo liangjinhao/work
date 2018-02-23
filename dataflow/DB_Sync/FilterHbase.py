@@ -1,6 +1,5 @@
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SQLContext, SparkSession
-import pshc
 from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
@@ -53,9 +52,6 @@ def filter_data(x):
 
 if __name__ == '__main__':
     conf = SparkConf().setAppName("Filter_Hbase")
-    sc = SparkContext(conf=conf)
-    sqlContext = SQLContext(sc)
-    connector = pshc.PSHC(sc, sqlContext)
     sparkSession = SparkSession.builder \
         .enableHiveSupport() \
         .config(conf=conf) \
