@@ -22,7 +22,7 @@ REDIS_QUEUE = ''
 
 THRIFT_IP = '10.27.71.108'
 THRIFT_PORT = 9099
-HBASE_TABLE_NAME = 'news_data'
+HBASE_TABLE_NAME = b'news_data'
 
 POST_URL = 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
 
@@ -134,16 +134,16 @@ if __name__ == '__main__':
     count = 0
     news_list = []
     while True:
-        redis_ip = ''
-        redis_port = 6379
-        redis_queue_name = ''
-        r = redis.Redis(host=redis_ip, port=redis_port)
-        rowkey = r.lpop(name=redis_queue_name)
+        r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+        rowkey = r.lpop(name=REDIS_QUEUE)
         if not rowkey:
-            print('Redis 队列中无数据，等待5分钟再取')
-            time.sleep(5 * 60)
-            rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
+            send(news_list)
+            count = 0
+            news_list = []
+            print('Redis 队列中无数据，等待2分钟再取')
+            time.sleep(2 * 60)
         else:
+            rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
             if count < 100:
                 news_list.append(news)
