@@ -1,5 +1,5 @@
 from pyspark import SparkConf, SparkContext, StorageLevel
-from pyspark.sql import SQLContext
+from pyspark.sql import SQLContext, SparkSession
 import datetime
 import pshc
 import pymysql.cursors
@@ -421,7 +421,7 @@ def add_file_info(x):
         if legends is not None and legends is not []:
             if isinstance(eval(legends), list):
                 for i in eval(legends):
-                    text = i['text']
+                    text = i['text'] if 'text' in i else str(i)
                     if text is not None:
                         new_legends.append(text)
             else:
@@ -454,6 +454,8 @@ def add_file_info(x):
             new_row["f_industry_id"] = INDUSTRY_MAPPING[new_row["f_industry_id"]]
         else:
             new_row["f_industry_id"] = '其他'
+            # 如果该张图片无行业类型，则忽略
+            continue
 
         result.append(new_row)
 
@@ -472,6 +474,12 @@ if __name__ == '__main__':
     conf = SparkConf().setAppName("Push_News")
     sc = SparkContext(conf=conf)
     sqlContext = SQLContext(sc)
+
+    sparkSession = SparkSession.builder\
+        .enableHiveSupport() \
+        .config(conf=conf)\
+        .getOrCreate()
+
     connector = pshc.PSHC(sc, sqlContext)
 
     catelog = {
@@ -522,7 +530,7 @@ if __name__ == '__main__':
     hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
 
-    hb_charts_hibor_df = sqlContext.sparkSession.createDataFrame(hb_charts_hibor_rdd)
+    hb_charts_hibor_df = sparkSession.createDataFrame(hb_charts_hibor_rdd)
 
     hb_charts_hibor_df.registerTempTable('table1')
 
@@ -535,19 +543,23 @@ if __name__ == '__main__':
     file_to_img_rdd = hb_charts_hibor_rdd.mapPartitions(extract)\
         .reduceByKey(lambda a, b: a + ',' + b)\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
-    file_to_img_df = sqlContext.sparkSession.createDataFrame(file_to_img_rdd,
-                                                             schema=connector.catelog_to_schema(file_to_img_catelog))
+    file_to_img_df = sparkSession.createDataFrame(file_to_img_rdd,
+                                                  schema=connector.catelog_to_schema(file_to_img_catelog))
+
+    file_to_img_df.write.saveAsTable('file_to_img', mode='overwrite')
+
     file_to_img_df.registerTempTable('table2')
 
     hb_charts_df.show()
     hb_charts_hibor_df.show()
+    print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
     file_to_img_df.show()
 
-    html_df = sqlContext.sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
-                                          "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
-                                          "table1.f_rating, table1.f_stockname, table1.f_author, table1.f_publish, "
-                                          "table1.f_title, table1.f_industry_id, table2.peer_imgs "
-                                          "FROM table1, table2 WHERE table1.fileId == table2.fileId")
+    html_df = sparkSession.sql("SELECT table1.id, table1.title, table1.legends, table1.img_url, "
+                               "table1.create_time, table1.fileId, table1.fileUrl, table1.f_typetitle, "
+                               "table1.f_rating, table1.f_stockname, table1.f_author, table1.f_publish, "
+                               "table1.f_title, table1.f_industry_id, table2.peer_imgs "
+                               "FROM table1, table2 WHERE table1.fileId == table2.fileId")
     html_df.show()
 
     html_catelog = {
