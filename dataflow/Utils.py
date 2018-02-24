@@ -17,8 +17,11 @@ def time_norm(string):
                        'june': '六月', 'july': '七月', 'august': '八月', 'september': '九月', 'october': '十月',
                        'november': '十一月', 'december': '十二月'}
 
-    date_regx = '\d{4}[-年/][01]?\d[-月/][0-3]?\d日?'  # 比如 2017/12/03
+    # 标准的"Y/m/d"时间表示，比如 2017/12/03， 2018年5月3日
+    date_regx = '\d{4}[-年/][01]?\d[-月/][0-3]?\d日?'
+    # "d/m/Y" 或 "m/d/Y" 格式的时间，解析时优先按 "d/m/Y" 解析
     date_regx_2 = '[0-3]?\d/[0-3]?\d/\d{4}?'  # 比如 12/03/2017, 27/03/2017
+    # 其他的日期表述1
     date_regx_3 = '(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月 [0-3]?\d, \d{4}'  # 比如 '四月 10, 2017'
 
     clock_regx = '[0-2]?\d:[0-5]?\d(?::[0-5]\d)?(?: PM)?'  # 比如 3:01 PM
@@ -48,13 +51,13 @@ def time_norm(string):
         raw_date = number_mapping_1[raw_date.split('月')[0]] + raw_date.split('月')[1]
         date = str(datetime.datetime.strptime(raw_date, '%m %d, %Y')).split(' ')[0]
     else:
-        date = str(datetime.datetime.now()).split(' ')[0]
+        date = ''
 
     # 再归一化小时，分钟和秒
     clock = ''
-    match2 = re.findall(clock_regx, string, flags=re.IGNORECASE)
-    if match2:
-        raw_clock = match2[0]
+    clock_match = re.findall(clock_regx, string, flags=re.IGNORECASE)
+    if clock_match:
+        raw_clock = clock_match[0]
         raw_time_segs = re.split(':', raw_clock)
         is_pm = 'PM' in raw_clock.upper() and int(raw_time_segs[0]) < 12
 
@@ -70,10 +73,10 @@ def time_norm(string):
         clock = '00:00:00'
 
     # 特殊的表述方式，比如'3分钟前'
-    match3 = re.findall(others_1, string)
+    others_1_match = re.findall(others_1, string)
     current = ''
-    if match3:
-        raw_time = match3[0]
+    if others_1_match:
+        raw_time = others_1_match[0]
         if '秒' in raw_time:
             minute_minus = re.search('\d{1,2}', raw_time).group()
             current = str(datetime.datetime.now() - datetime.timedelta(seconds=int(minute_minus))).split('.')[0]
@@ -84,10 +87,10 @@ def time_norm(string):
             minute_minus = re.search('\d{1,2}', raw_time).group()
             current = str(datetime.datetime.now() - datetime.timedelta(hours=int(minute_minus))).split('.')[0]
 
-    if match3:
+    if others_1_match:
         # print(string, '<->', current)
         return current
-    elif date_match1 or date_match2 or date_match3 or match2:
+    elif date_match1 or date_match2 or date_match3:
         # print(string, '<->', date + ' ' + clock)
         return date + ' ' + clock
     else:
