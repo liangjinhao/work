@@ -1,5 +1,5 @@
-from pyspark import SparkConf, SparkContext
-from pyspark.sql import SQLContext, SparkSession
+from pyspark import SparkConf, StorageLevel
+from pyspark.sql import SparkSession
 from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
@@ -57,6 +57,6 @@ if __name__ == '__main__':
         .config(conf=conf) \
         .getOrCreate()
 
-    df = sparkSession.sql('SELECT key, state FROM abc.hb_charts')
+    df = sparkSession.sql('SELECT key, state FROM abc.hb_charts').persist(storageLevel=StorageLevel.DISK_ONLY)
     df.show(10)
     df.rdd.foreachPartition(lambda x: filter_data(x))
