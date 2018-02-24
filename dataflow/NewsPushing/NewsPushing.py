@@ -72,14 +72,13 @@ def send(x):
         news_json['brief'] = row['dese']
         news_json['source_url'] = row['laiyuan']
 
-        normed_publish_time = Utils.time_norm(row['publish_time'])
-        news_json['publish_time'] = normed_publish_time if normed_publish_time != '' else row['crawl_time']
+        news_json['publish_time'] = Utils.time_norm(row['publish_time'])
 
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
         news_json['url'] = row['url']
 
-        if news_json['publish_time'] is not None:
+        if news_json['publish_time'] is not None and news_json['publish_time'] != '':
             news_json['time'] = int(datetime.datetime.strptime(news_json['publish_time'], '%Y-%m-%d %H:%M:%S')
                                     .strftime('%s'))
         else:
