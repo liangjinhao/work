@@ -58,5 +58,6 @@ if __name__ == '__main__':
         .getOrCreate()
 
     df = sparkSession.sql('SELECT key, state FROM abc.hb_charts').persist(storageLevel=StorageLevel.DISK_ONLY)
+    print("=========>", df.count())
     df.show(10)
     df.rdd.foreachPartition(lambda x: filter_data(x))
