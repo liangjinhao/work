@@ -16,9 +16,9 @@ from hbase.Hbase import *
 """
 
 
-REDIS_IP = ''
+REDIS_IP = '10.174.97.43'
 REDIS_PORT = 6379
-REDIS_QUEUE = ''
+REDIS_QUEUE = 'index_pending_queue'
 
 THRIFT_IP = '10.27.71.108'
 THRIFT_PORT = 9099
