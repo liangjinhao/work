@@ -37,8 +37,8 @@ class HanlpSegmentor(metaclass=Singleton):
         class_path = conf.get("hanlp", "classpath")
 
         if not isJVMStarted():
-            startJVM(getDefaultJVMPath(), "-Djava.class.path=" + class_path, "-Xms1g", "-Xmx1g")  # 启动JVM
-        self.HanLP = JClass('com.hankcs.hanlp.HanLP')
+            startJVM(getDefaultJVMPath(), "-Djava.class.path=" + class_path, "-Xms2g", "-Xmx2g")  # 启动JVM
+        self.NLPTokenizer = JClass('com.hankcs.hanlp.tokenizer.NLPTokenizer')
         self.CustomDictionry = JClass('com.hankcs.hanlp.dictionary.CustomDictionary')
 
     def reload_custom_dictionry(self):
@@ -54,7 +54,7 @@ class HanlpSegmentor(metaclass=Singleton):
         :param sentence: 输入的句子
         :return: 分词的结果（词和词性组成的元组的列表）
         """
-        res = list(self.HanLP.segment(sentence))
+        res = list(self.NLPTokenizer.segment(sentence))
         result = []
         for item in res:
             word = item.word
