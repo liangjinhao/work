@@ -23,7 +23,8 @@ def time_norm(string):
     date_regx_2 = '[0-3]?\d/[0-3]?\d/\d{4}?'  # 比如 12/03/2017, 27/03/2017
     # 其他的日期表述1
     date_regx_3 = '(?:一|二|三|四|五|六|七|八|九|十|十一|十二)月 [0-3]?\d, \d{4}'  # 比如 '四月 10, 2017'
-
+    # 其他的日期表述2
+    date_regx_4 = '[01]?\d[-月/][0-3]?\d日?'
     clock_regx = '[0-2]?\d:[0-5]?\d(?::[0-5]\d)?(?: PM)?'  # 比如 3:01 PM
 
     others_1 = '\d{1,2}(?:秒|分|分钟|小时)前'
@@ -37,6 +38,7 @@ def time_norm(string):
     new_string = ' '.join([month_mapping_2[i.lower()] if i.lower() in month_mapping_2 else i
                            for i in string.split(' ')])
     date_match3 = re.findall(date_regx_3, new_string)
+    date_match4 = re.findall(date_regx_4, new_string)
     if date_match1:
         raw_date = date_match1[0]
         date = '-'.join(re.split('[-年月日/]', raw_date)).strip('-')
@@ -50,6 +52,13 @@ def time_norm(string):
         raw_date = date_match3[0]
         raw_date = number_mapping_1[raw_date.split('月')[0]] + raw_date.split('月')[1]
         date = str(datetime.datetime.strptime(raw_date, '%m %d, %Y')).split(' ')[0]
+    elif date_match4:
+        raw_date = date_match4[0]
+        date = '-'.join(re.split('[-年月日/]', raw_date)).strip('-')
+        str_date = str(datetime.datetime.strptime(date, '%m-%d')).split(' ')[0][5:]
+        current_date = str(datetime.datetime.now()).split(' ')[0]
+        date = current_date.split(' ')[0][:5] + str_date if current_date.split(' ')[0][5:] > str_date \
+            else ''
     else:
         date = ''
 
@@ -90,7 +99,7 @@ def time_norm(string):
     if others_1_match:
         # print(string, '<->', current)
         return current
-    elif date_match1 or date_match2 or date_match3:
+    elif (date_match1 or date_match2 or date_match3 or date_match4) and date != '':
         # print(string, '<->', date + ' ' + clock)
         return date + ' ' + clock
     else:
