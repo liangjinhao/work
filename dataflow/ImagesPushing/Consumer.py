@@ -207,6 +207,8 @@ class ScrawlImagesConsumer(threading.Thread):
                 redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
                 put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
                 redis_client.rpush(self.redis_queue, str(put_data))
+            else:
+                print('Post to Solr: ', row['rowKey'])
         except Exception as e:
             print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 异常，rowkey:' + row['rowKey'] + ' exception:' + str(e))
             redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
@@ -241,7 +243,7 @@ class ScrawlImagesConsumer(threading.Thread):
             print(time.strftime('%Y-%m-%d %H:%M:%S') + " Write to Hbase 失败, rowKey:" + url)
 
         img = self.get_hbase_row(url)
-        self.send([img])
+        self.send(img)
 
         # To process body
         ch.basic_ack(delivery_tag=method.delivery_tag)
