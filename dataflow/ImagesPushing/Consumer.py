@@ -89,6 +89,7 @@ class ScrawlImagesConsumer(threading.Thread):
         row = client.getRow(self.hbase_table, rowkey, attributes=None)
         if len(row) > 0:
             result = dict()
+            result['rowKey'] = str(row[0].row, 'utf-8')
             columns = row[0].columns
             for column in columns:
                 result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
@@ -134,7 +135,7 @@ class ScrawlImagesConsumer(threading.Thread):
             "language": "1"  # 中文为1，英文为2
         }
 
-        row_key = row['id']  #
+        row_key = row['rowKey']  #
         img_oss = row['img_oss']  # 图片 OSS 链接
         img_title = row['img_title'] if 'img_title' in row else ''
         img_type = row['img_type'] if 'img_type' in row else '[]'
@@ -202,12 +203,12 @@ class ScrawlImagesConsumer(threading.Thread):
             response = requests.post(self.post_url, json=[img_json])
             if response.status_code != '200':
                 print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 失败，response code:' + response.status_code +
-                      ' rowkey:' + row['id'])
+                      ' rowkey:' + row['rowKey'])
                 redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
                 put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
                 redis_client.rpush(self.redis_queue, str(put_data))
         except Exception as e:
-            print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 异常，rowkey:' + row['id'] + ' exception:' + str(e))
+            print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 异常，rowkey:' + row['rowKey'] + ' exception:' + str(e))
             redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
             put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
             redis_client.rpush(self.redis_queue, str(put_data))
