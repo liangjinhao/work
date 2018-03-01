@@ -203,8 +203,8 @@ class ScrawlImagesConsumer(threading.Thread):
 
         try:
             response = requests.post(self.post_url, json=[img_json])
-            if response.status_code != '200':
-                print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 失败，response code:' + response.status_code +
+            if response.status_code != 200:
+                print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 失败，response code:', response.status_code,
                       ' rowkey:' + row['rowKey'])
                 redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
                 put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
