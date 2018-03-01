@@ -57,7 +57,7 @@ def time_norm(string):
         date = '-'.join(re.split('[-年月日/]', raw_date)).strip('-')
         str_date = str(datetime.datetime.strptime(date, '%m-%d')).split(' ')[0][5:]
         current_date = str(datetime.datetime.now()).split(' ')[0]
-        date = current_date.split(' ')[0][:5] + str_date if current_date.split(' ')[0][5:] > str_date \
+        date = current_date.split(' ')[0][:5] + str_date if current_date.split(' ')[0][5:] >= str_date \
             else ''
     else:
         date = ''
@@ -124,3 +124,5 @@ def content_norm(html):
     result = re.sub(' {2,}', ' ', result)
 
     return result
+
+print(time_norm('03-01 11:03'))
