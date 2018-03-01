@@ -46,9 +46,9 @@ class ScrawlImagesProducer(threading.Thread):
 
             message = r.lpop(name=self.redis_queue_name)
             if not message:
-                print('Redis 队列中无数据，等待1分钟再取')
+                print('Redis 队列中无数据，等待5s再取')
                 connection.close()
-                time.sleep(60)
+                time.sleep(5)
                 continue
             message = str(message, encoding='utf-8') if isinstance(message, bytes) else message
             channel.basic_publish(exchange='',
