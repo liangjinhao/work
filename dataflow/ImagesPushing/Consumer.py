@@ -30,7 +30,7 @@ class ScrawlImagesConsumer(threading.Thread):
 
         self.thrift_ip = '10.27.71.108'  # thrift IP地址
         self.thrift_port = 9099  # thrift 端口
-        self.hbase_table = 'news_img_data'  # 写入的Hbase的表名
+        self.hbase_table = b'news_img_data'  # 写入的Hbase的表名
 
         self.redis_ip = '10.174.97.43'
         self.redis_port = 6379
