@@ -1,6 +1,5 @@
 from pyspark import SparkConf, SparkContext, StorageLevel
 from pyspark.sql import SQLContext, SparkSession
-import pyspark.sql.functions as sqlf
 import pshc
 
 
