@@ -132,7 +132,7 @@ if __name__ == '__main__':
     connector = pshc.PSHC(sc, sqlContext)
 
     catelog = {
-        "table": {"namespace": "default", "name": "img_data"},
+        "table": {"namespace": "default", "name": "news_img_data"},
         "rowkey": "id",
         "columns": {
             "id": {"cf": "rowkey", "col": "key", "type": "string"},
