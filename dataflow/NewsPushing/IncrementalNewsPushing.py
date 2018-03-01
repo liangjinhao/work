@@ -62,7 +62,7 @@ def post(rowkey, news_json, write_back_redis=False):
     redis_client = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
     try:
         response = requests.post(POST_URL, json=[news_json])
-        if response.status_code != '200' and write_back_redis:
+        if response.status_code != 200 and write_back_redis:
             print(time.strftime('%Y-%m-%d %H:%M:%S'), rowkey, response.status_code)
             redis_client.rpush(REDIS_QUEUE, rowkey)
         else:
