@@ -63,10 +63,12 @@ def post(rowkey, news_json, write_back_redis=False):
     try:
         response = requests.post(POST_URL, json=[news_json])
         if response.status_code != '200' and write_back_redis:
-            print(rowkey, response.status_code)
+            print(time.strftime('%Y-%m-%d %H:%M:%S'), rowkey, response.status_code)
             redis_client.rpush(REDIS_QUEUE, rowkey)
+        else:
+            print(time.strftime('%Y-%m-%d %H:%M:%S') + ' Post 完成:', rowkey)
     except Exception as e:
-        print(e)
+        print(time.strftime('%Y-%m-%d %H:%M:%S'), e)
         if write_back_redis:
             redis_client.rpush(REDIS_QUEUE, rowkey)
 
@@ -140,7 +142,7 @@ if __name__ == '__main__':
             send(news_list)
             count = 0
             news_list = []
-            print('Redis 队列中无数据，等待5s再取')
+            # print(time.strftime('%Y-%m-%d %H:%M:%S'), 'Redis 队列中无数据，等待5s再取')
             time.sleep(5)
         else:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
