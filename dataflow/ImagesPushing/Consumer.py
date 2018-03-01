@@ -173,10 +173,12 @@ class ScrawlImagesConsumer(threading.Thread):
 
         img_json['publish'] = url.lstrip('https?://').split('/')[0]
 
-        if row['publish_time'] is not None:
+        if row['publish_time'] is not None and Utils.time_norm(row['publish_time']) != '':
             img_datetime = datetime.datetime.strptime(Utils.time_norm(row['publish_time']), '%Y-%m-%d %H:%M:%S')
             img_json['time'] = int(time.mktime(img_datetime.timetuple()))
             img_json['year'] = img_datetime.year
+        else:
+            print('!!!!', row['publish_time'])
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,
