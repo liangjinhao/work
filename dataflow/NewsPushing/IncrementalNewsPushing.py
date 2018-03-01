@@ -29,7 +29,7 @@ POST_URL = 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_nam
 
 def get_hbase_row(rowkey):
     """
-    通过 Thrift读取 Hbase 中 键值为 rowkey 的某一行数据
+    通过 Thrift读取 Hbase 中 键值为 rowkey 的某一行数据，返回该行数据的 dict 表示
     :param rowkey:
     :return:
     """
@@ -42,6 +42,7 @@ def get_hbase_row(rowkey):
     row = client.getRow(HBASE_TABLE_NAME, rowkey, attributes=None)
     if len(row) > 0:
         result = dict()
+        result['rowKey'] = str(row[0].row, 'utf-8')
         columns = row[0].columns
         for column in columns:
             result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
@@ -80,7 +81,7 @@ def send(x):
 
         for row in x:
             news_json = dict({
-                "id": "id",
+                "id": "",
                 "author": "",  # author
                 "channel": "",  # 首页 新闻中心 新闻
                 "contain_image": "",  # False
@@ -97,7 +98,7 @@ def send(x):
                 "time": 0,
             })
 
-            news_json['id'] = row['id']
+            news_json['id'] = row['rowKey']
             news_json['author'] = row['author']
 
             news_json['author'] = Utils.author_norm(row['author']) \
@@ -125,7 +126,7 @@ def send(x):
             else:
                 news_json['time'] = 0
 
-            executor.submit(post, row['id'], news_json)
+            executor.submit(post, row['rowKey'], news_json)
 
 
 if __name__ == '__main__':
@@ -139,8 +140,8 @@ if __name__ == '__main__':
             send(news_list)
             count = 0
             news_list = []
-            print('Redis 队列中无数据，等待2分钟再取')
-            time.sleep(2 * 60)
+            print('Redis 队列中无数据，等待5s再取')
+            time.sleep(5)
         else:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
