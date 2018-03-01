@@ -373,94 +373,6 @@ INDUSTRY_MAPPING = {
 }
 
 
-def add_file_info(x):
-    """
-    这一步的操作是查询 Mysql，获取每个图片的研报信息，并确定出每个图片所属的行业
-    :param x:
-    :return:
-    """
-    host = '10.117.211.16'
-    port = 6033
-    user = 'core_bj'
-    password = 'alUXKHIrJoAOuI26'
-    db = 'core_doc'
-    table = 'hibor'
-    connection = pymysql.connect(host=host, port=port, user=user, password=password,
-                                 db=db, charset='utf8', cursorclass=pymysql.cursors.DictCursor)
-
-    result = []
-    for row in x:
-        new_row = dict({
-            "id": '',
-            "title": '',
-            "legends": '',
-            "img_url": '',
-            "create_time": '',
-            "fileId": '',
-            "fileUrl": '',
-            "typetitle": '',
-            "rating": '',
-            "stockname": '',
-            "author": '',
-            "publish": '',
-            "file_title": '',
-            "industry_id": '',
-        })
-
-        new_row['id'] = row['id']
-        new_row['create_time'] = row['create_time']
-        new_row['img_url'] = row['pngFile']
-        new_row['title'] = row['title']
-        new_row['fileId'] = row['fileId']
-        new_row['fileUrl'] = row['fileUrl']
-
-        legends = row['legends'] if 'legends' in row else row['legends_str']
-        new_legends = []
-
-        if legends is not None and legends is not []:
-            if isinstance(eval(legends), list):
-                for i in eval(legends):
-                    text = i['text'] if 'text' in i else str(i)
-                    if text is not None:
-                        new_legends.append(text)
-            else:
-                print(row)
-
-        if new_legends is not []:
-            new_row['legends'] = ','.join(new_legends)
-        else:
-            new_row['legends'] = ''
-
-        # 查询 Mysql 获取相关信息
-        cursor = connection.cursor()
-        sql = "SELECT * FROM " + db + "." + table + " WHERE id = " + new_row['fileId'] + ";"
-        cursor.execute(sql)
-        cursor_row = cursor.fetchone()
-
-        # 如果在 Hibor 表中没找到该数据，则跳过
-        if cursor_row is None:
-            continue
-
-        new_row["typetitle"] = cursor_row['typetitle'] if 'typetitle' in cursor_row else ''
-        new_row["rating"] = cursor_row['rating'] if 'rating' in cursor_row else ''
-        new_row["stockname"] = cursor_row['stockname'] if 'stockname' in cursor_row else ''
-        new_row["author"] = cursor_row['author'] if 'author' in cursor_row else ''
-        new_row["publish"] = cursor_row['publish'] if 'publish' in cursor_row else ''
-        new_row["file_title"] = cursor_row['title'] if 'title' in cursor_row else ''
-        new_row["industry_id"] = cursor_row['industry_id'] if 'industry_id' in cursor_row else ''
-
-        if new_row["industry_id"] is not None and new_row["industry_id"] in INDUSTRY_MAPPING:
-            new_row["industry_id"] = INDUSTRY_MAPPING[new_row["industry_id"]]
-        else:
-            new_row["industry_id"] = '其他'
-            # 如果该张图片无行业类型，则忽略
-            continue
-
-        result.append(new_row)
-
-    return result
-
-
 def norm_data(x):
     host = '10.25.170.41'
     port = 3306
@@ -526,13 +438,6 @@ def norm_data(x):
     return result
 
 
-def extract(x):
-    result = []
-    for row in x:
-        result.append((row['fileId'], row['img_url']))
-    return result
-
-
 if __name__ == '__main__':
 
     conf = SparkConf().setAppName("GetInfoTable")
@@ -551,70 +456,39 @@ if __name__ == '__main__':
         "rowkey": "id",
         "columns": {
             "id": {"cf": "rowkey", "col": "key", "type": "string"},
-            # "algorithmCommitTime": {"cf": "data", "col": "algorithmCommitTime", "type": "string"},
-            # "area": {"cf": "data", "col": "area", "type": "string"},
-            # "chartType": {"cf": "data", "col": "chartType", "type": "string"},
-            # "chart_version": {"cf": "data", "col": "chart_version", "type": "string"},
-            # "confidence": {"cf": "data", "col": "confidence", "type": "string"},
             "create_time": {"cf": "data", "col": "create_time", "type": "string"},
-            # "data": {"cf": "data", "col": "data", "type": "string"},  # 图片数据
-            # "deleted": {"cf": "data", "col": "deleted", "type": "string"},
             "fileId": {"cf": "data", "col": "fileId", "type": "string"},
-            # "filePath": {"cf": "data", "col": "filePath", "type": "string"},
             "fileUrl": {"cf": "data", "col": "fileUrl", "type": "string"},  # PDF文件url
-            # "fonts": {"cf": "data", "col": "fonts", "type": "string"},
-            # "hAxis": {"cf": "data", "col": "hAxis", "type": "string"},  # X轴
-            # "hAxisTextD": {"cf": "data", "col": "hAxisTextD", "type": "string"},  # X轴上方文本
-            # "hAxisTextU": {"cf": "data", "col": "hAxisTextU", "type": "string"},  # X轴下方文本
-            # "is_ppt": {"cf": "data", "col": "is_ppt", "type": "string"},
-            # "last_updated": {"cf": "data", "col": "last_updated", "type": "string"},
             "legends": {"cf": "data", "col": "legends", "type": "string"},  # 图例
-            # "lvAxis": {"cf": "data", "col": "lvAxis", "type": "string"},  # Y轴左
-            # "ocrEngine": {"cf": "data", "col": "ocrEngine", "type": "string"},
-            # "pageIndex": {"cf": "data", "col": "pageIndex", "type": "string"},
-            # "page_area": {"cf": "data", "col": "page_area", "type": "string"},
             "pngFile": {"cf": "data", "col": "pngFile", "type": "string"},  # 图片url
-            # "rvAxis": {"cf": "data", "col": "rvAxis", "type": "string"},  # Y轴右
-            # "source": {"cf": "data", "col": "source", "type": "string"},  #
-            # "state": {"cf": "data", "col": "state", "type": "string"},
-            # "svgFile": {"cf": "data", "col": "svgFile", "type": "string"},
-            # "text_info": {"cf": "data", "col": "text_info", "type": "string"},  # 文本信息
             "title": {"cf": "data", "col": "title", "type": "string"},  # 标题
-            # "vAxisTextL": {"cf": "data", "col": "vAxisTextL", "type": "string"},  # Y轴左边文本
-            # "vAxisTextR": {"cf": "data", "col": "vAxisTextR", "type": "string"},  # Y轴右边文本
         }
     }
 
-    # startTime = datetime.datetime.strptime('2018-2-9 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-    # stopTime = datetime.datetime.strptime('2018-05-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-    #
-    # hb_charts_df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
-    #                                            stop_time=stopTime, repartition_num=None, cached=True)
-    # hb_charts_df.show()
-    # # print('----hb_charts_df COUNT:---\n', hb_charts_df.count())
-    #
-    # hb_charts_hibor_rdd = hb_charts_df.rdd.mapPartitions(add_file_info)\
-    #     .persist(storageLevel=StorageLevel.DISK_ONLY)
-
-    hb_charts_df = sparkSession.sql('SELECT * FROM abc.hb_charts')
+    hb_charts_df = sparkSession.sql('SELECT key, create_time, pngFile, title, fileId, fileUrl, legends_str '
+                                    'FROM abc.hb_charts')
     hibor_df = sparkSession\
         .sql('SELECT hibor_key, stockcode, stockname, title, typetitle, rating, author, publish, category_id '
              'FROM abc.hibor')\
         .rdd.map(lambda x: (x['hibor_key'].split(':')[-1], x['stockcode'], x['stockname'], x['title'],
-                           x['typetitle'], x['rating'], x['author'], x['publish'], x['category_id']))\
-        .toDF(['hibor_key', 'stockcode', 'stockname', 'title', 'typetitle', 'rating', 'author', 'publish', 'category_id'])
+                            x['typetitle'], x['rating'], x['author'], x['publish'], x['category_id']))\
+        .toDF(['hibor_key', 'stockcode', 'stockname', 'title', 'typetitle', 'rating',
+               'author', 'publish', 'category_id'])
 
     df1 = hb_charts_df.registerTempTable('df1')
     df2 = hibor_df.registerTempTable('df2')
 
     # 先生成合并 hb_charts 和 hibor 的合成 DataFrame
-    hb_charts_hibor_tmp = sparkSession.sql(
+    hb_charts_hibor_df = sparkSession.sql(
         "SELECT df1.key as id, df1.create_time, df1.pngFile, df1.title, df1.fileId, df1.fileUrl, df1.legends_str, "
         "df2.typetitle, df2.rating, df2.stockname, df2.stockcode, df2.author, df2.publish, df2.title as file_title, "
-        "df2.category_id "
-        "FROM df1 JOIN df2 ON df1.fileId = df2.hibor_key")
-    hb_charts_hibor_rdd = hb_charts_hibor_tmp.rdd.mapPartitions(norm_data).persist(storageLevel=StorageLevel.DISK_ONLY)
-    hb_charts_hibor_df = sparkSession.createDataFrame(hb_charts_hibor_rdd)
+        "df2.category_id FROM df1 JOIN df2 ON df1.fileId = df2.hibor_key")\
+        .rdd.mapPartitions(norm_data)\
+        .toDF(['id', 'create_time', 'img_url', 'title', 'fileId', 'fileUrl',
+               'typetitle', 'rating', 'stockname', 'stockcode', 'author', 'publish',
+               'file_title', 'category_id', 'industry_id', 'industry', 'legends'])\
+        .persist(storageLevel=StorageLevel.DISK_ONLY)
+
     print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
     hb_charts_hibor_df.show()
 
@@ -625,14 +499,12 @@ if __name__ == '__main__':
             "peer_imgs": {"cf": "data", "col": "img_url", "type": "string"},
         }
     }
-    file_to_img_rdd = hb_charts_hibor_rdd.mapPartitions(extract)\
-        .reduceByKey(lambda a, b: a + ',' + b)\
+    file_to_img_df = hb_charts_hibor_df.rdd.map(lambda x: (x['fileId'], x['id']))\
+        .reduceByKey(lambda a, b: a + ',' + b).toDF(['fileId', 'peer_imgs'])\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
-    file_to_img_df = sparkSession.createDataFrame(file_to_img_rdd,
-                                                  schema=connector.catelog_to_schema(file_to_img_catelog))
+
     print('----file_to_img_df COUNT:---\n', file_to_img_df.count())
     file_to_img_df.show()
-    file_to_img_df.write.saveAsTable('abc.file_to_img', mode='overwrite')
 
     # 生成 InfoTable 的 DataFrame
     hb_charts_hibor_df.registerTempTable('table1')
