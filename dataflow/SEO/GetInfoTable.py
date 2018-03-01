@@ -494,8 +494,8 @@ def norm_data(x):
             continue
 
         cursor = connection.cursor()
-        sql = "SELECT * FROM " + db + "." + table + " WHERE stk_code = " + new_row['stockcode'] + \
-              ", and indu_standard=1001014" + ";"
+        sql = "SELECT * FROM " + db + "." + table + " WHERE stk_code = '" + new_row['stockcode'] + \
+              "' and indu_standard=1001014" + ";"
         cursor.execute(sql)
         cursor_row = cursor.fetchone()
 
@@ -509,11 +509,14 @@ def norm_data(x):
         legends = row['legends_str']
         new_legends = []
         if legends is not None and legends is not []:
-            if isinstance(eval(legends), list):
-                for i in eval(legends):
-                    text = i['text'] if 'text' in i else str(i)
-                    if text is not None:
-                        new_legends.append(text)
+            try:
+                if isinstance(eval(legends), list):
+                    for i in eval(legends):
+                        text = i['text'] if 'text' in i else str(i)
+                        if text is not None:
+                            new_legends.append(text)
+            except NameError:
+                pass
         if new_legends is not []:
             new_row['legends'] = ','.join(new_legends)
         else:
@@ -606,7 +609,7 @@ if __name__ == '__main__':
 
     # 先生成合并 hb_charts 和 hibor 的合成 DataFrame
     hb_charts_hibor_tmp = sparkSession.sql(
-        "SELECT df1.key, df1.create_time, df1.pngFile, df1.title, df1.fileId, df1.fileUrl, df1.legends_str, "
+        "SELECT df1.key as id, df1.create_time, df1.pngFile, df1.title, df1.fileId, df1.fileUrl, df1.legends_str, "
         "df2.typetitle, df2.rating, df2.stockname, df2.stockcode, df2.author, df2.publish, df2.title as file_title, "
         "df2.category_id "
         "FROM df1 JOIN df2 ON df1.fileId = df2.hibor_key")
