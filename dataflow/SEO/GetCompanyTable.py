@@ -15,6 +15,7 @@ if __name__ == '__main__':
         .enableHiveSupport() \
         .config(conf=conf)\
         .getOrCreate()
+    sparkSession.sparkContext.setLogLevel('WARN')
 
     connector = pshc.PSHC(sc, sqlContext)
 
@@ -29,7 +30,6 @@ if __name__ == '__main__':
     }
 
     company_table_df = connector.get_df_from_hbase(info_catelog).persist(storageLevel=StorageLevel.DISK_ONLY)
-    print('----info_table_df COUNT:---\n', company_table_df.count())
 
     # 除去industry_id为空的row，加上index列
     company_table_df = company_table_df.filter('stockcode != ""')\
@@ -37,10 +37,16 @@ if __name__ == '__main__':
         .rdd.zipWithIndex().map(lambda x: (x[0]['id'], x[0]['stockcode'], x[0]['create_time'], x[1]))\
         .toDF(['id', 'stockcode', 'create_time', 'index'])
 
+    print('----company_table_df COUNT:---\n', company_table_df.count())
+    company_table_df.show(20, False)
+
     # 计算出每个行业的index起始，结束和数量
     company_meta_df = company_table_df.groupBy('stockcode')\
                                       .agg(sqlf.min('index'), sqlf.max('index'), sqlf.count('index'))\
                                       .toDF('stockcode', 'min', 'max', 'count')
+
+    print('----company_meta_df COUNT:---\n', company_meta_df.count())
+    company_meta_df.show(20, False)
 
     # 计算出 industry_imgs_df
     company_table_df.registerTempTable('company_table_df')
@@ -57,6 +63,9 @@ if __name__ == '__main__':
         "company_meta_df.stockcode order by stockcode, create_time DESC")\
         .rdd.map(lambda x: (x['stockcode'] + '_' + str((x['index'] - x['min'] + 1) // page_num), x['id']))\
         .reduceByKey(lambda x, y:  hash_id(str(x)) + ',' + hash_id(str(y))).toDF(['company_paging', 'img_ids'])
+
+    print('----company_imgs_df COUNT:---\n', company_imgs_df.count())
+    company_imgs_df.show(20, False)
 
     # 将 result_df 保存至 Hbase
     company_imgs_catelog = {

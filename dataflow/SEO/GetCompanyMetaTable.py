@@ -25,6 +25,7 @@ if __name__ == '__main__':
         .enableHiveSupport() \
         .config(conf=conf)\
         .getOrCreate()
+    sparkSession.sparkContext.setLogLevel('WARN')
 
     connector = pshc.PSHC(sc, sqlContext)
 
@@ -42,7 +43,9 @@ if __name__ == '__main__':
     }
 
     company_table_df = connector.get_df_from_hbase(info_catelog).persist(storageLevel=StorageLevel.DISK_ONLY)
-    print('----info_table_df COUNT:---\n', company_table_df.count())
+
+    print('----company_table_df COUNT:---\n', company_table_df.count())
+    company_table_df.show(20, False)
 
     company_meta_table = company_table_df.filter('stockcode != ""')\
         .rdd \
@@ -52,6 +55,9 @@ if __name__ == '__main__':
         .map(expand) \
         .map(lambda x: (x[0], x[1][0], x[2], x[3])) \
         .toDF(['stockcode', 'stockname', 'industries', 'publishers'])
+
+    print('----company_meta_table COUNT:---\n', company_meta_table.count())
+    company_meta_table.show(20, False)
 
     # 将 industry_meta_df 保存至 Hbase
     company_meta_catelog = {
