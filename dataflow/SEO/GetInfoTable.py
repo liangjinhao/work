@@ -448,9 +448,7 @@ if __name__ == '__main__':
         .enableHiveSupport() \
         .config(conf=conf)\
         .getOrCreate()
-
-    log4jLogger = sc._jvm.org.apache.log4j
-    LOGGER = log4jLogger.LogManager.getLogger("SEO_info").setLevel(log4jLogger.Level.ERROR)
+    sparkSession.sparkContext.setLogLevel('WARN')
 
     connector = pshc.PSHC(sc, sqlContext)
 
@@ -493,7 +491,6 @@ if __name__ == '__main__':
         .persist(storageLevel=StorageLevel.DISK_ONLY)
 
     print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
-    LOGGER.error('----hb_charts_hibor_df COUNT:--- ' + str(hb_charts_hibor_df.count()))
     hb_charts_hibor_df.show()
 
     # 计算出研报文件和图片对应的 DataFrame
@@ -508,7 +505,6 @@ if __name__ == '__main__':
         .persist(storageLevel=StorageLevel.DISK_ONLY)
 
     print('----file_to_img_df COUNT:---\n', file_to_img_df.count())
-    LOGGER.error('----file_to_img_df COUNT:--- ' + str(file_to_img_df.count()))
     file_to_img_df.show()
 
     # 生成 InfoTable 的 DataFrame
@@ -517,7 +513,6 @@ if __name__ == '__main__':
     html_df = sparkSession.sql("SELECT table1.*, table2.peer_imgs "
                                "FROM table1 JOIN table2 ON table1.fileId == table2.fileId")
     print('----html_df COUNT:--- ' + str(html_df.count()))
-    LOGGER.error('----html_df COUNT:---\n', html_df.count())
     html_df.show()
 
     html_df.saveAsTable('html_df', mode='overwrite')
