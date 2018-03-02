@@ -61,12 +61,12 @@ if __name__ == '__main__':
 
     # 将 industry_meta_df 保存至 Hbase
     company_meta_catelog = {
-        "table": {"namespace": "default", "name": "SEO_company"},
-        "rowkey": "industry_id",
+        "table": {"namespace": "default", "name": "SEO_company_meta"},
+        "rowkey": "company_id",
         "columns": {
-            "industry_id": {"cf": "rowkey", "col": "key", "type": "string"},
-            "industry": {"cf": "data", "col": "industry", "type": "string"},
-            "companies": {"cf": "data", "col": "companies", "type": "string"},
+            "company_id": {"cf": "rowkey", "col": "key", "type": "string"},
+            "company": {"cf": "data", "col": "company", "type": "string"},
+            "industries": {"cf": "data", "col": "industries", "type": "string"},
             "publishers": {"cf": "data", "col": "publishers", "type": "string"},
         }
     }
