@@ -32,6 +32,9 @@ if __name__ == '__main__':
 
     industry_table_df = connector.get_df_from_hbase(info_catelog).persist(storageLevel=StorageLevel.DISK_ONLY)
 
+    print('----industry_table_df COUNT:---\n', industry_table_df.count())
+    industry_table_df.show(20, False)
+
     # 除去industry_id为空的row，加上index列
     industry_table_rdd = industry_table_df.filter('industry_id != ""')\
         .orderBy(["industry_id", "create_time"], ascending=[1, 0])\
@@ -59,7 +62,7 @@ if __name__ == '__main__':
 
     # 计算出 industry_imgs_df
     industry_table_df.registerTempTable('industry_table_df')
-    industry_meta_df.registerTempTable('indus_meta_df')
+    industry_meta_df.registerTempTable('industry_meta_df')
     page_num = 12
 
     def hash_id(id):
