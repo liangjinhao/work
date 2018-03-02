@@ -129,7 +129,7 @@ def send(x):
                                         .strftime('%s'))
             else:
                 logger.warning("时间解析失败，时间" + row['publish_time'] + "被解析成" + str(news_json['publish_time']) +
-                               "，url: " + row['url'])
+                               "，url: " + row['url'] + "，rowKey: " + row['rowKey'])
                 news_json['time'] = 0
 
             executor.submit(post, row['rowKey'], news_json)
@@ -138,7 +138,7 @@ def send(x):
 if __name__ == '__main__':
 
     handle = RotatingFileHandler('./NewPushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
-    handle.setLevel(logging.WARNING)
+    handle.setLevel(logging.INFO)
     log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
     handle.setFormatter(log_formater)
 
