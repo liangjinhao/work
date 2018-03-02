@@ -15,7 +15,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 handle = RotatingFileHandler('./NewImagePushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
-handle.setLevel(logging.WARNING)
+handle.setLevel(logging.INFO)
 log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 handle.setFormatter(log_formater)
 
