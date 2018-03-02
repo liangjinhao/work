@@ -473,7 +473,8 @@ if __name__ == '__main__':
              'FROM abc.hibor')\
         .rdd.map(lambda x: (x['hibor_key'].split(':')[-1], x['stockcode'], x['stockname'], x['title'],
                             x['typetitle'], x['rating'], x['author'], x['publish'], x['category_id']))
-    hibor_df = sparkSession.createDataFrame(hibor_rdd)
+    hibor_df = sparkSession.createDataFrame(hibor_rdd, ['hibor_key', 'stockcode', 'stockname', 'title', 'typetitle',
+                                                        'rating', 'author', 'publish', 'category_id'])
 
     df1 = hb_charts_df.registerTempTable('df1')
     df2 = hibor_df.registerTempTable('df2')
