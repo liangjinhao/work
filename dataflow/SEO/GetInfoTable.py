@@ -488,7 +488,7 @@ if __name__ == '__main__':
     hb_charts_hibor_df = sparkSession.createDataFrame(hb_charts_hibor_rdd).persist(storageLevel=StorageLevel.DISK_ONLY)
 
     print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
-    hb_charts_hibor_df.show()
+    hb_charts_hibor_df.show(20, False)
 
     # 计算出研报文件和图片对应的 DataFrame
     file_to_img_df = hb_charts_hibor_df.rdd.map(lambda x: (x['fileId'], x['id']))\
@@ -496,7 +496,7 @@ if __name__ == '__main__':
         .persist(storageLevel=StorageLevel.DISK_ONLY)
 
     print('----file_to_img_df COUNT:---\n', file_to_img_df.count())
-    file_to_img_df.show()
+    file_to_img_df.show(20, False)
 
     # 生成 InfoTable 的 DataFrame
     hb_charts_hibor_df.registerTempTable('table1')
@@ -504,7 +504,7 @@ if __name__ == '__main__':
     html_df = sparkSession.sql("SELECT table1.*, table2.peer_imgs "
                                "FROM table1 JOIN table2 ON table1.fileId == table2.fileId")
     print('----html_df COUNT:--- ' + str(html_df.count()))
-    html_df.show()
+    html_df.show(20, False)
 
     # 将 InfoTable 保存至 Hbase
     html_catelog = {
