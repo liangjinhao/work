@@ -124,5 +124,3 @@ def content_norm(html):
     result = re.sub(' {2,}', ' ', result)
 
     return result
-
-print(time_norm('03-01 11:03'))
