@@ -189,7 +189,7 @@ class ScrawlImagesConsumer(threading.Thread):
             img_json['time'] = int(time.mktime(img_datetime.timetuple()))
             img_json['year'] = img_datetime.year
         else:
-            logger.warning('数据' + row['url'] + '的时间' + str(row['publish_time']) + '解析失败')
+            logger.warning('数据' + row['url'] + '的时间 [' + str(row['publish_time']) + '] 解析失败')
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,
