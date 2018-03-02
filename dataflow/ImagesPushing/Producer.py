@@ -1,8 +1,19 @@
 import pika
 import time
 import redis
-import json
 import threading
+import logging
+from logging.handlers import RotatingFileHandler
+
+
+handle = RotatingFileHandler('./NewImagePushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+handle.setLevel(logging.WARNING)
+log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+handle.setFormatter(log_formater)
+
+logger = logging.getLogger('Rotating log')
+logger.addHandler(handle)
+logger.setLevel(logging.INFO)
 
 
 class ScrawlImagesProducer(threading.Thread):
@@ -46,7 +57,7 @@ class ScrawlImagesProducer(threading.Thread):
 
             message = r.lpop(name=self.redis_queue_name)
             if not message:
-                print('Redis 队列中无数据，等待5s再取')
+                # print('Redis 队列中无数据，等待5s再取')
                 connection.close()
                 time.sleep(5)
                 continue
@@ -57,5 +68,5 @@ class ScrawlImagesProducer(threading.Thread):
                                   properties=pika.BasicProperties(
                                       delivery_mode=2,  # make message persistent
                                   ))
-            print(" Sent %r" % message)
+            logger.info("从 Redis 队列取出数据 " + message)
             connection.close()
