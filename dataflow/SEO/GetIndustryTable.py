@@ -1,6 +1,7 @@
 from pyspark import SparkConf, SparkContext, StorageLevel
 from pyspark.sql import SQLContext, SparkSession
 import pyspark.sql.functions as sqlf
+from pyspark.sql.types import *
 import hashlib
 import pshc
 
@@ -25,18 +26,26 @@ if __name__ == '__main__':
         "columns": {
             "id": {"cf": "data", "col": "id", "type": "string"},  # 图片 id
             "industry_id": {"cf": "data", "col": "industry_id", "type": "string"},
-            "create_time": {"cf": "data", "col": "id", "create_time": "string"},
+            "create_time": {"cf": "data", "col": "create_time", "type": "string"},
         }
     }
 
     industry_table_df = connector.get_df_from_hbase(info_catelog).persist(storageLevel=StorageLevel.DISK_ONLY)
 
     # 除去industry_id为空的row，加上index列
-    industry_table_df = industry_table_df.filter('industry_id != ""')\
+    industry_table_rdd = industry_table_df.filter('industry_id != ""')\
         .orderBy(["industry_id", "create_time"], ascending=[1, 0])\
         .rdd.zipWithIndex()\
         .map(lambda x: (x[0]['id'], x[0]['industry_id'], x[0]['create_time'], x[1]))\
         .toDF(['id', 'industry_id', 'create_time', 'index'])
+
+    schema = StructType([
+        StructField("id", StringType(), True),
+        StructField("industry_id", StringType(), True),
+        StructField("create_time", StringType(), True),
+        StructField("index", IntegerType(), True)
+    ])
+    industry_table_df = sqlContext.createDataFrame(industry_table_rdd, schema=schema)
 
     print('----industry_table_df COUNT:---\n', industry_table_df.count())
     industry_table_df.show(20, False)

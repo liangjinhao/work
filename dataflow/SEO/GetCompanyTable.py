@@ -1,6 +1,7 @@
 from pyspark import SparkConf, SparkContext, StorageLevel
 from pyspark.sql import SQLContext, SparkSession
 import pyspark.sql.functions as sqlf
+from pyspark.sql.types import *
 import hashlib
 import pshc
 
@@ -25,17 +26,24 @@ if __name__ == '__main__':
         "columns": {
             "id": {"cf": "data", "col": "id", "type": "string"},  # 图片 id
             "stockcode": {"cf": "data", "col": "industry_id", "type": "string"},
-            "create_time": {"cf": "data", "col": "id", "create_time": "string"},
+            "create_time": {"cf": "data", "col": "create_time", "type": "string"},
         }
     }
 
     company_table_df = connector.get_df_from_hbase(info_catelog).persist(storageLevel=StorageLevel.DISK_ONLY)
 
     # 除去industry_id为空的row，加上index列
-    company_table_df = company_table_df.filter('stockcode != ""')\
+    company_table_rdd = company_table_df.filter('stockcode != ""')\
         .orderBy(["stockcode", "create_time"], ascending=[1, 0])\
-        .rdd.zipWithIndex().map(lambda x: (x[0]['id'], x[0]['stockcode'], x[0]['create_time'], x[1]))\
-        .toDF(['id', 'stockcode', 'create_time', 'index'])
+        .rdd.zipWithIndex().map(lambda x: (x[0]['id'], x[0]['stockcode'], x[0]['create_time'], x[1]))
+
+    schema = StructType([
+        StructField("id", StringType(), True),
+        StructField("stockcode", StringType(), True),
+        StructField("create_time", StringType(), True),
+        StructField("index", IntegerType(), True)
+    ])
+    company_table_df = sqlContext.createDataFrame(company_table_rdd, schema=schema)
 
     print('----company_table_df COUNT:---\n', company_table_df.count())
     company_table_df.show(20, False)
