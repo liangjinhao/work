@@ -11,6 +11,17 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
 from hbase.Hbase import *
+import logging
+from logging.handlers import RotatingFileHandler
+
+handle = RotatingFileHandler('./NewImagePushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+handle.setLevel(logging.WARNING)
+log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+handle.setFormatter(log_formater)
+
+logger = logging.getLogger('Rotating log')
+logger.addHandler(handle)
+logger.setLevel(logging.INFO)
 
 
 class ScrawlImagesConsumer(threading.Thread):
@@ -178,7 +189,7 @@ class ScrawlImagesConsumer(threading.Thread):
             img_json['time'] = int(time.mktime(img_datetime.timetuple()))
             img_json['year'] = img_datetime.year
         else:
-            print('!!!!', row['publish_time'])
+            logger.warning('数据' + row['url'] + '的时间' + str(row['publish_time']) + '解析失败')
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,
@@ -204,15 +215,14 @@ class ScrawlImagesConsumer(threading.Thread):
         try:
             response = requests.post(self.post_url, json=[img_json])
             if response.status_code != 200:
-                print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 失败，response code:', response.status_code,
-                      ' rowkey:' + row['rowKey'])
+                logger.error("推送 Solr 返回响应代码 " + str(response.status_code) + "，数据 rowKey:" + row['rowKey'])
                 redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
                 put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
                 redis_client.rpush(self.redis_queue, str(put_data))
             else:
-                print('Post to Solr: ', row['rowKey'])
+                logger.info("推送 Solr 完成， rowKey:" + row['rowKey'])
         except Exception as e:
-            print(time.strftime('%Y-%m-%d %H:%M:%S') + ' 推送 Solr 异常，rowkey:' + row['rowKey'] + ' exception:' + str(e))
+            logger.exception("推送 Solr 异常： " + str(e) + "，数据 rowKey:" + row['rowKey'])
             redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
             put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
             redis_client.rpush(self.redis_queue, str(put_data))
@@ -242,7 +252,7 @@ class ScrawlImagesConsumer(threading.Thread):
         try:
             self.write_hbase([data], self.hbase_table, self.thrift_ip, self.thrift_port)
         except Exception:
-            print(time.strftime('%Y-%m-%d %H:%M:%S') + " Write to Hbase 失败, rowKey:" + url)
+            logger.exception('写入 Hbase 失败， Url:' + url)
 
         img = self.get_hbase_row(url)
         self.send(img)
