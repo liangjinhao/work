@@ -36,8 +36,7 @@ if __name__ == '__main__':
     industry_table_rdd = industry_table_df.filter('industry_id != ""')\
         .orderBy(["industry_id", "create_time"], ascending=[1, 0])\
         .rdd.zipWithIndex()\
-        .map(lambda x: (x[0]['id'], x[0]['industry_id'], x[0]['create_time'], x[1]))\
-        .toDF(['id', 'industry_id', 'create_time', 'index'])
+        .map(lambda x: (x[0]['id'], x[0]['industry_id'], x[0]['create_time'], x[1]))
 
     schema = StructType([
         StructField("id", StringType(), True),

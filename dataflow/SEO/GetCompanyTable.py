@@ -65,7 +65,7 @@ if __name__ == '__main__':
         return hashlib.md5(bytes(id, encoding="utf-8")).hexdigest()[0:10] + ':' + id
 
     company_imgs_df = sparkSession.sql(
-        "select company_table_df.id, company_table_df.industry_id, company_table_df.create_time, "
+        "select company_table_df.id, company_table_df.stockcode, company_table_df.create_time, "
         "company_table_df.index, company_meta_df.min, company_meta_df.max, company_meta_df.count "
         "from company_table_df join company_meta_df on company_table_df.stockcode="
         "company_meta_df.stockcode order by stockcode, create_time DESC")\
