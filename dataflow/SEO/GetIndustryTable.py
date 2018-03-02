@@ -24,7 +24,7 @@ if __name__ == '__main__':
         "table": {"namespace": "default", "name": "SEO_info"},
         "rowkey": "id",
         "columns": {
-            "id": {"cf": "data", "col": "id", "type": "string"},  # 图片 id
+            "id": {"cf": "rowkey", "col": "key", "type": "string"},  # 图片 id
             "industry_id": {"cf": "data", "col": "industry_id", "type": "string"},
             "create_time": {"cf": "data", "col": "create_time", "type": "string"},
         }
