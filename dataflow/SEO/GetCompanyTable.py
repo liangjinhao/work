@@ -25,7 +25,7 @@ if __name__ == '__main__':
         "rowkey": "id",
         "columns": {
             "id": {"cf": "rowkey", "col": "key", "type": "string"},  # 图片 id
-            "stockcode": {"cf": "data", "col": "industry_id", "type": "string"},
+            "stockcode": {"cf": "data", "col": "stockcode", "type": "string"},
             "create_time": {"cf": "data", "col": "create_time", "type": "string"},
         }
     }
