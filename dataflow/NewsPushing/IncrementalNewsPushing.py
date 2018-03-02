@@ -128,8 +128,8 @@ def send(x):
                 news_json['time'] = int(datetime.datetime.strptime(news_json['publish_time'], '%Y-%m-%d %H:%M:%S')
                                         .strftime('%s'))
             else:
-                logger.warning("时间解析失败，时间" + row['publish_time'] + "被解析成" + str(news_json['publish_time']) +
-                               "，url: " + row['url'] + "，rowKey: " + row['rowKey'])
+                logger.warning("时间解析失败，时间 [" + row['publish_time'] + "] 被解析成 [" + str(news_json['publish_time']) +
+                               "]，url: " + row['url'] + "，rowKey: " + row['rowKey'])
                 news_json['time'] = 0
 
             executor.submit(post, row['rowKey'], news_json)
