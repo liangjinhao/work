@@ -8,6 +8,7 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
 from hbase.Hbase import *
+from logging.handlers import RotatingFileHandler
 
 
 """
@@ -48,10 +49,11 @@ def get_hbase_row(rowkey):
             result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
         return result
     else:
+        logger.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8'))
         return {}
 
 
-def post(rowkey, news_json, write_back_redis=False):
+def post(rowkey, news_json, write_back_redis=True):
     """
     将单条数据 post 到 Solr 服务上
     :param rowkey:
@@ -63,12 +65,12 @@ def post(rowkey, news_json, write_back_redis=False):
     try:
         response = requests.post(POST_URL, json=[news_json])
         if response.status_code != 200 and write_back_redis:
-            print(time.strftime('%Y-%m-%d %H:%M:%S'), rowkey, response.status_code)
+            logger.error("推送 Solr 返回响应代码 " + str(response.status_code) + "，数据 rowKey:" + rowkey)
             redis_client.rpush(REDIS_QUEUE, rowkey)
         else:
-            print(time.strftime('%Y-%m-%d %H:%M:%S') + ' Post 完成:', rowkey)
+            logger.info("推送 Solr 完成， rowKey:" + rowkey)
     except Exception as e:
-        print(time.strftime('%Y-%m-%d %H:%M:%S'), e)
+        logger.error("推送 Solr 异常： " + str(e) + "，数据 rowKey:" + rowkey)
         if write_back_redis:
             redis_client.rpush(REDIS_QUEUE, rowkey)
 
@@ -126,12 +128,23 @@ def send(x):
                 news_json['time'] = int(datetime.datetime.strptime(news_json['publish_time'], '%Y-%m-%d %H:%M:%S')
                                         .strftime('%s'))
             else:
+                logger.warning("时间解析失败，时间" + row['publish_time'] + "被解析成" + str(news_json['publish_time']) +
+                               "，url: " + row['url'])
                 news_json['time'] = 0
 
             executor.submit(post, row['rowKey'], news_json)
 
 
 if __name__ == '__main__':
+
+    handle = RotatingFileHandler('./NewPushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+    handle.setLevel(logging.WARNING)
+    log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    handle.setFormatter(log_formater)
+
+    logger = logging.getLogger('Rotating log')
+    logger.addHandler(handle)
+    logger.setLevel(logging.INFO)
 
     count = 0
     news_list = []
