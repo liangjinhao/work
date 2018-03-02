@@ -468,38 +468,28 @@ if __name__ == '__main__':
 
     hb_charts_df = sparkSession.sql('SELECT key, create_time, pngFile, title, fileId, fileUrl, legends_str '
                                     'FROM abc.hb_charts')
-    hibor_df = sparkSession\
+    hibor_rdd = sparkSession\
         .sql('SELECT hibor_key, stockcode, stockname, title, typetitle, rating, author, publish, category_id '
              'FROM abc.hibor')\
         .rdd.map(lambda x: (x['hibor_key'].split(':')[-1], x['stockcode'], x['stockname'], x['title'],
-                            x['typetitle'], x['rating'], x['author'], x['publish'], x['category_id']))\
-        .toDF(['hibor_key', 'stockcode', 'stockname', 'title', 'typetitle', 'rating',
-               'author', 'publish', 'category_id'])
+                            x['typetitle'], x['rating'], x['author'], x['publish'], x['category_id']))
+    hibor_df = sparkSession.createDataFrame(hibor_rdd)
 
     df1 = hb_charts_df.registerTempTable('df1')
     df2 = hibor_df.registerTempTable('df2')
 
     # 先生成合并 hb_charts 和 hibor 的合成 DataFrame
-    hb_charts_hibor_df = sparkSession.sql(
+    hb_charts_hibor_rdd = sparkSession.sql(
         "SELECT df1.key as id, df1.create_time, df1.pngFile, df1.title, df1.fileId, df1.fileUrl, df1.legends_str, "
         "df2.typetitle, df2.rating, df2.stockname, df2.stockcode, df2.author, df2.publish, df2.title as file_title, "
         "df2.category_id FROM df1 JOIN df2 ON df1.fileId = df2.hibor_key")\
-        .rdd.mapPartitions(norm_data)\
-        .toDF(['id', 'create_time', 'img_url', 'title', 'fileId', 'fileUrl',
-               'typetitle', 'rating', 'stockname', 'stockcode', 'author', 'publish',
-               'file_title', 'category_id', 'industry_id', 'industry', 'legends'])\
-        .persist(storageLevel=StorageLevel.DISK_ONLY)
+        .rdd.mapPartitions(norm_data)
+    hb_charts_hibor_df = sparkSession.createDataFrame(hb_charts_hibor_rdd).persist(storageLevel=StorageLevel.DISK_ONLY)
 
     print('----hb_charts_hibor_df COUNT:---\n', hb_charts_hibor_df.count())
     hb_charts_hibor_df.show()
 
     # 计算出研报文件和图片对应的 DataFrame
-    file_to_img_catelog = {
-        "columns": {
-            "fileId": {"cf": "data", "col": "fileId", "type": "string"},
-            "peer_imgs": {"cf": "data", "col": "img_url", "type": "string"},
-        }
-    }
     file_to_img_df = hb_charts_hibor_df.rdd.map(lambda x: (x['fileId'], x['id']))\
         .reduceByKey(lambda a, b: a + ',' + b).toDF(['fileId', 'peer_imgs'])\
         .persist(storageLevel=StorageLevel.DISK_ONLY)
@@ -514,8 +504,6 @@ if __name__ == '__main__':
                                "FROM table1 JOIN table2 ON table1.fileId == table2.fileId")
     print('----html_df COUNT:--- ' + str(html_df.count()))
     html_df.show()
-
-    html_df.saveAsTable('html_df', mode='overwrite')
 
     # 将 InfoTable 保存至 Hbase
     html_catelog = {
