@@ -36,7 +36,7 @@ class ScrawlImagesConsumer(threading.Thread):
         self.redis_port = 6379
         self.redis_queue = 'oss_img_tag_queue'
 
-        self.post_url = 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+        self.post_url = 'http://10.24.235.15:8080/solrweb/chartIndexByUpdate'
 
     @staticmethod
     def write_hbase(data, table_name, ip, server_port):
