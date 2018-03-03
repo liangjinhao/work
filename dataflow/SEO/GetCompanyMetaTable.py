@@ -55,7 +55,7 @@ if __name__ == '__main__':
         .reduceByKey(lambda x, y: (list(set(x[0] + y[0])), list(set(x[1] + y[1])), list(set(x[2] + y[2])))) \
         .map(expand) \
         .map(lambda x: (x[0], x[1][0], x[2], x[3])) \
-        .toDF(['stockcode', 'stockname', 'industries', 'publishers'])
+        .toDF(['company_id', 'company', 'industries', 'publishers'])
 
     print('----company_meta_table COUNT:---\n', company_meta_table.count())
     company_meta_table.show(20, False)
