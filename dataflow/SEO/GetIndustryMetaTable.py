@@ -33,7 +33,7 @@ if __name__ == '__main__':
         "table": {"namespace": "default", "name": "SEO_info"},
         "rowkey": "id",
         "columns": {
-            # "id": {"cf": "data", "col": "id", "type": "string"},  # 图片 id
+            "id": {"cf": "rowkey", "col": "key", "type": "string"},
             "industry_id": {"cf": "data", "col": "industry_id", "type": "string"},
             "industry": {"cf": "data", "col": "industry", "type": "string"},
             "stockcode": {"cf": "data", "col": "stockcode", "type": "string"},
@@ -47,7 +47,8 @@ if __name__ == '__main__':
     print('----industry_table_df COUNT:---\n', industry_table_df.count())
     industry_table_df.show(20, False)
 
-    industry_meta_df = industry_table_df.filter('industry_id != ""')\
+    industry_meta_df = industry_table_df.select('industry_id, industry, stockcode, stockname, publish')\
+        .filter('industry_id != "" and stockcode != ""')\
         .rdd\
         .map(lambda x: (x[0], x[1], x[2]+'_'+x[3], x[4]))\
         .map(lambda x: (x[0], ([x[1]], [x[2]], [x[3]])))\
