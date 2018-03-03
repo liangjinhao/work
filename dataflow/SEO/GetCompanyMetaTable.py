@@ -47,7 +47,7 @@ if __name__ == '__main__':
     print('----company_table_df COUNT:---\n', company_table_df.count())
     company_table_df.show(20, False)
 
-    company_meta_table = company_table_df.select('stockcode, stockname, industry_id, industry, publish')\
+    company_meta_table = company_table_df.select('stockcode', 'stockname', 'industry_id', 'industry', 'publish')\
         .filter('stockcode != "" and industry_id != ""')\
         .rdd \
         .map(lambda x: (x[0], x[1], x[2] + '_' + x[3], x[4])) \
