@@ -48,7 +48,7 @@ if __name__ == '__main__':
     company_table_df.show(20, False)
 
     company_meta_table = company_table_df.select('stockcode', 'stockname', 'industry_id', 'industry', 'publish')\
-        .filter('stockcode != "" and industry_id != ""')\
+        .filter('industry_id != "" and industry != "" and stockcode != "" and stockname != ""')\
         .rdd \
         .map(lambda x: (x[0], x[1], x[2] + '_' + x[3], x[4])) \
         .map(lambda x: (x[0], ([x[1]], [x[2]], [x[3]]))) \
