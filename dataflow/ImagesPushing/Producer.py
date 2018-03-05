@@ -11,9 +11,9 @@ handle.setLevel(logging.INFO)
 log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 handle.setFormatter(log_formater)
 
-logger = logging.getLogger('Rotating log')
-logger.addHandler(handle)
-logger.setLevel(logging.INFO)
+logger_p = logging.getLogger('Rotating log')
+logger_p.addHandler(handle)
+logger_p.setLevel(logging.INFO)
 
 
 class ScrawlImagesProducer(threading.Thread):
@@ -57,7 +57,7 @@ class ScrawlImagesProducer(threading.Thread):
 
             message = r.lpop(name=self.redis_queue_name)
             if not message:
-                logger.info("Redis 队列中无数据，等待5s再取")
+                logger_p.info("Redis 队列中无数据，等待5s再取")
                 connection.close()
                 time.sleep(5)
                 continue
@@ -69,8 +69,8 @@ class ScrawlImagesProducer(threading.Thread):
                                                delivery_mode=2,  # make message persistent
                                            ))
             if result:
-                logger.info("从 Redis 推送数据到 RabbitMQ 成功： " + message)
+                logger_p.info("从 Redis 推送数据到 RabbitMQ 成功： " + message)
             else:
-                logger.error("从 Redis 推送数据到 RabbitMQ 失败： " + message)
+                logger_p.error("从 Redis 推送数据到 RabbitMQ 失败： " + message)
                 r.rpush(self.redis_queue_name, message)
             connection.close()
