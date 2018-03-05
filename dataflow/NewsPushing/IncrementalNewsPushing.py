@@ -151,18 +151,10 @@ if __name__ == '__main__':
     while True:
         r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
         rowkey = r.lpop(name=REDIS_QUEUE)
-        if not rowkey:
-            send(news_list)
-            count = 0
-            news_list = []
-            # print(time.strftime('%Y-%m-%d %H:%M:%S'), 'Redis 队列中无数据，等待5s再取')
-            time.sleep(5)
-        else:
+
+        if rowkey:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
-            if count < 100:
-                news_list.append(news)
-            else:
-                send(news_list)
-                count = 0
-                news_list = []
+            send([news])
+        else:
+            logger.info('Redis 队列中无数据，等待5s再取')
