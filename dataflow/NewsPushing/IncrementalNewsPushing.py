@@ -84,6 +84,8 @@ def send(x):
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
 
         for row in x:
+            if row is None or not isinstance(row, dict) or row == {}:
+                pass
             news_json = dict({
                 "id": "",
                 "author": "",  # author
