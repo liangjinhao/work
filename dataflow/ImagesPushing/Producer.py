@@ -6,7 +6,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 
-handle = RotatingFileHandler('./NewImagePushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+handle = RotatingFileHandler('./producer.log', maxBytes=5 * 1024 * 1024, backupCount=1)
 handle.setLevel(logging.INFO)
 log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 handle.setFormatter(log_formater)
@@ -57,16 +57,20 @@ class ScrawlImagesProducer(threading.Thread):
 
             message = r.lpop(name=self.redis_queue_name)
             if not message:
-                # print('Redis 队列中无数据，等待5s再取')
+                logger.info("Redis 队列中无数据，等待5s再取")
                 connection.close()
                 time.sleep(5)
                 continue
             message = str(message, encoding='utf-8') if isinstance(message, bytes) else message
-            channel.basic_publish(exchange='',
-                                  routing_key=self.queue_name,
-                                  body=message,
-                                  properties=pika.BasicProperties(
-                                      delivery_mode=2,  # make message persistent
-                                  ))
-            logger.info("从 Redis 队列取出数据 " + message)
+            result = channel.basic_publish(exchange='',
+                                           routing_key=self.queue_name,
+                                           body=message,
+                                           properties=pika.BasicProperties(
+                                               delivery_mode=2,  # make message persistent
+                                           ))
+            if result:
+                logger.info("从 Redis 推送数据到 RabbitMQ 成功： " + message)
+            else:
+                logger.error("从 Redis 推送数据到 RabbitMQ 失败： " + message)
+                r.rpush(self.redis_queue_name, message)
             connection.close()

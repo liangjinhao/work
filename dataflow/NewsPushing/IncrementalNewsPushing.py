@@ -85,7 +85,7 @@ def send(x):
 
         for row in x:
             if row is None or not isinstance(row, dict) or row == {}:
-                pass
+                return
             news_json = dict({
                 "id": "",
                 "author": "",  # author

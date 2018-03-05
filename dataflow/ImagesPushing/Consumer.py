@@ -14,7 +14,7 @@ from hbase.Hbase import *
 import logging
 from logging.handlers import RotatingFileHandler
 
-handle = RotatingFileHandler('./NewImagePushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+handle = RotatingFileHandler('./consumer.log', maxBytes=5 * 1024 * 1024, backupCount=1)
 handle.setLevel(logging.INFO)
 log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 handle.setFormatter(log_formater)
@@ -106,15 +106,15 @@ class ScrawlImagesConsumer(threading.Thread):
                 result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
             return result
         else:
+            logger.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8'))
             return {}
 
     def send(self, row):
         """
         将 Hbase 中的一行数据归一化后推送到 Solr 中
         """
-        if row == {} or row is None:
+        if row is None or not isinstance(row, dict) or row == {}:
             return
-
         img_json = {
             "id": "",  # ggg + 图片url的md5 + _1
             "image_id": "",  # ggg + 图片url的md5
