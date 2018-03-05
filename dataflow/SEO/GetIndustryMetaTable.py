@@ -58,7 +58,7 @@ if __name__ == '__main__':
         .toDF(['industry_id', 'industry', 'companies', 'publishers'])
 
     print('----industry_meta_df COUNT:---\n', industry_meta_df.count())
-    industry_meta_df.show(20, False)
+    industry_meta_df.show(500, False)
 
     # 将 industry_meta_df 保存至 Hbase
     industry_meta_catelog = {

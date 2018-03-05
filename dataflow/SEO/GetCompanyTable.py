@@ -70,7 +70,7 @@ if __name__ == '__main__':
         "from company_table_df join company_meta_df on company_table_df.stockcode="
         "company_meta_df.stockcode order by stockcode, create_time DESC")\
         .rdd.map(lambda x: (x['stockcode'] + '_' + str((x['index'] - x['min'] + 1) // page_num), x['id']))\
-        .reduceByKey(lambda x, y:  hash_id(str(x)) + ',' + hash_id(str(y))).toDF(['company_paging', 'img_ids'])
+        .reduceByKey(lambda x, y: str(x) + ',' + str(y)).toDF(['company_paging', 'img_ids'])
 
     print('----company_imgs_df COUNT:---\n', company_imgs_df.count())
     company_imgs_df.show(20, False)

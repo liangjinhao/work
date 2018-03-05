@@ -74,7 +74,7 @@ if __name__ == '__main__':
         "from industry_table_df join industry_meta_df on industry_table_df.industry_id="
         "industry_meta_df.industry_id order by industry_id, create_time DESC")\
         .rdd.map(lambda x: (x['industry_id'] + '_' + str((x['index'] - x['min'] + 1) // page_num), x['id']))\
-        .reduceByKey(lambda x, y: hash_id(str(x)) + ',' + hash_id(str(y))).toDF(['industry_paging', 'img_ids'])
+        .reduceByKey(lambda x, y: str(x) + ',' + str(y)).toDF(['industry_paging', 'img_ids'])
 
     print('----industry_imgs_df COUNT:---\n', industry_imgs_df.count())
     industry_imgs_df.show(20, False)
