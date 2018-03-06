@@ -120,33 +120,46 @@ def send(x):
             news_json['brief'] = row['dese']
             news_json['source_url'] = row['laiyuan']
 
-            news_json['publish_time'] = Utils.time_norm(row['publish_time'])
-
             news_json['source_name'] = row['source']
             news_json['title'] = row['title']
             news_json['url'] = row['url']
 
-            if news_json['publish_time'] is not None and news_json['publish_time'] != '':
-                news_json['time'] = int(datetime.datetime.strptime(news_json['publish_time'], '%Y-%m-%d %H:%M:%S')
+            norm_publish_time = Utils.time_norm(row['publish_time']) if row['publish_time'] is not None else ''
+            if norm_publish_time != '':
+                news_json['time'] = int(datetime.datetime.strptime(norm_publish_time, '%Y-%m-%d %H:%M:%S')
                                         .strftime('%s'))
             else:
-                logger.warning("时间解析失败，时间 [" + row['publish_time'] + "] 被解析成 [" + str(news_json['publish_time']) +
-                               "]，url: " + row['url'] + "，rowKey: " + row['rowKey'])
                 news_json['time'] = 0
+                # 时间归一化情况较多，这里负责把归一化失败的时间记载下来
+                if row['publish_time'] is not None and row['publish_time'] != '':
+                    logger_time_parsing.error(
+                        '[' + str(row['publish_time']) + '] ===> ' + '[' + norm_publish_time + ']' +
+                        "]，url: " + row['url'] + "，rowKey: " + row['rowKey']
+                    )
 
             executor.submit(post, row['rowKey'], news_json)
 
 
 if __name__ == '__main__':
 
-    handle = RotatingFileHandler('./NewPushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+    # 记载消息推送的 logger
+    handle = RotatingFileHandler('./news_pushing.log', maxBytes=5 * 1024 * 1024, backupCount=1)
     handle.setLevel(logging.INFO)
-    log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-    handle.setFormatter(log_formater)
-
-    logger = logging.getLogger('Rotating log')
+    handle.setFormatter(
+        logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    )
+    logger = logging.getLogger('NewsPushing')
     logger.addHandler(handle)
     logger.setLevel(logging.INFO)
+
+    # 记载时间解析失败例子的 logger
+    time_parsing_handle = RotatingFileHandler('./time_parsing.log', maxBytes=10 * 1024 * 1024, backupCount=3)
+    time_parsing_handle.setFormatter(
+        logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+    )
+    logger_time_parsing = logging.getLogger('TimeParsingLogger')
+    logger_time_parsing.addHandler(time_parsing_handle)
+    logger_time_parsing.setLevel(logging.INFO)
 
     count = 0
     news_list = []
