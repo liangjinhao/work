@@ -86,6 +86,8 @@ class Collector:
                         weight = float(0.1)
                     elif word in self.phrase_dict and tag.startswith('subject'):
                         weight = float(2.0)
+                    elif word in self.phrase_dict and tag.startswith('indicator'):
+                        weight = float(1.2)
                     else:
                         weight = sum_weight / len(word)
                     new_crf_result.append({'pos': nature, 'term': word, 'type': tag})
@@ -105,10 +107,13 @@ class Collector:
                         weight = float(0.1)
                     elif word in self.phrase_dict and tag.startswith('subject'):
                         weight = float(2.0)
+                    elif word in self.phrase_dict and tag.startswith('indicator'):
+                        weight = float(1.2)
                     else:
                         weight = sum_weight / len(word)
-                    new_crf_result.append({'pos': nature, 'term': word, 'type': tag})
-                    new_xgboost_result.append({'term': word, 'weight': weight})
+                    # 在这种合并的词前后加上 双引号
+                    new_crf_result.append({'pos': nature, 'term': '"'+word+'"', 'type': tag})
+                    new_xgboost_result.append({'term': '"'+word+'"', 'weight': weight})
                     head += (rear - head)
                     break
                 rear -= 1
