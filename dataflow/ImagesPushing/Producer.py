@@ -6,14 +6,14 @@ import logging
 from logging.handlers import RotatingFileHandler
 
 
-handle = RotatingFileHandler('./producer.log', maxBytes=5 * 1024 * 1024, backupCount=1)
-handle.setLevel(logging.INFO)
-log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-handle.setFormatter(log_formater)
-
-logger_p = logging.getLogger('producer log')
-logger_p.addHandler(handle)
-logger_p.setLevel(logging.INFO)
+# 记载 Producer 线程情况的 logger
+producer_handle = RotatingFileHandler('./producer.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+producer_handle.setFormatter(
+    logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+)
+logger_producer = logging.getLogger('producer log')
+logger_producer.addHandler(producer_handle)
+logger_producer.setLevel(logging.INFO)
 
 
 class ScrawlImagesProducer(threading.Thread):
@@ -57,7 +57,7 @@ class ScrawlImagesProducer(threading.Thread):
 
             message = r.lpop(name=self.redis_queue_name)
             if not message:
-                logger_p.info("Redis 队列中无数据，等待5s再取")
+                logger_producer.info("Redis 队列中无数据，等待5s再取")
                 connection.close()
                 time.sleep(5)
                 continue
@@ -69,8 +69,8 @@ class ScrawlImagesProducer(threading.Thread):
                                                delivery_mode=2,  # make message persistent
                                            ))
             if result:
-                logger_p.info("从 Redis 推送数据到 RabbitMQ 成功： " + message)
+                logger_producer.info("从 Redis 推送数据到 RabbitMQ 成功： " + message)
             else:
-                logger_p.error("从 Redis 推送数据到 RabbitMQ 失败： " + message)
+                logger_producer.error("从 Redis 推送数据到 RabbitMQ 失败： " + message)
                 r.rpush(self.redis_queue_name, message)
             connection.close()

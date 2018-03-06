@@ -14,14 +14,24 @@ from hbase.Hbase import *
 import logging
 from logging.handlers import RotatingFileHandler
 
-handle = RotatingFileHandler('./consumer.log', maxBytes=5 * 1024 * 1024, backupCount=1)
-handle.setLevel(logging.INFO)
-log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
-handle.setFormatter(log_formater)
 
-logger_c = logging.getLogger('consumer log')
-logger_c.addHandler(handle)
-logger_c.setLevel(logging.INFO)
+# 记载时间解析失败例子的 logger
+time_parsing_handle = RotatingFileHandler('./time_parsing.log', maxBytes=10 * 1024 * 1024, backupCount=3)
+time_parsing_handle.setFormatter(
+    logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+)
+logger_time_parsing = logging.getLogger('TimeParsingLogger')
+logger_time_parsing.addHandler(time_parsing_handle)
+logger_time_parsing.setLevel(logging.INFO)
+
+# 记载 Consumer 线程情况的 logger
+consumer_handle = RotatingFileHandler('./consumer.log', maxBytes=5 * 1024 * 1024, backupCount=1)
+consumer_handle.setFormatter(
+    logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+)
+logger_consumer = logging.getLogger('consumer log')
+logger_consumer.addHandler(consumer_handle)
+logger_consumer.setLevel(logging.INFO)
 
 
 class ScrawlImagesConsumer(threading.Thread):
@@ -106,7 +116,7 @@ class ScrawlImagesConsumer(threading.Thread):
                 result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
             return result
         else:
-            logger_c.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8'))
+            logger_consumer.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8'))
             return {}
 
     def send(self, row):
@@ -184,12 +194,14 @@ class ScrawlImagesConsumer(threading.Thread):
 
         img_json['publish'] = url.lstrip('https?://').split('/')[0]
 
-        if row['publish_time'] is not None and Utils.time_norm(row['publish_time']) != '':
-            img_datetime = datetime.datetime.strptime(Utils.time_norm(row['publish_time']), '%Y-%m-%d %H:%M:%S')
+        norm_publish_time = Utils.time_norm(row['publish_time']) if row['publish_time'] is not None else ''
+        if norm_publish_time != '':
+            img_datetime = datetime.datetime.strptime(norm_publish_time, '%Y-%m-%d %H:%M:%S')
             img_json['time'] = int(time.mktime(img_datetime.timetuple()))
             img_json['year'] = img_datetime.year
         else:
-            logger_c.warning('数据' + row['url'] + '的时间 [' + str(row['publish_time']) + '] 解析失败')
+            if row['publish_time'] is not None and row['publish_time'] != '':
+                logger_time_parsing.error('[' + str(row['publish_time']) + '] ===> ' + '[' + norm_publish_time + ']')
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,
@@ -215,14 +227,14 @@ class ScrawlImagesConsumer(threading.Thread):
         try:
             response = requests.post(self.post_url, json=[img_json])
             if response.status_code != 200:
-                logger_c.error("推送 Solr 返回响应代码 " + str(response.status_code) + "，数据 rowKey:" + row['rowKey'])
+                logger_consumer.error("推送 Solr 返回响应代码 " + str(response.status_code) + "，数据 rowKey:" + row['rowKey'])
                 redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
                 put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
                 redis_client.rpush(self.redis_queue, str(put_data))
             else:
-                logger_c.info("推送 Solr 完成， rowKey:" + row['rowKey'])
+                logger_consumer.info("推送 Solr 完成， rowKey:" + row['rowKey'])
         except Exception as e:
-            logger_c.exception("推送 Solr 异常： " + str(e) + "，数据 rowKey:" + row['rowKey'])
+            logger_consumer.error("推送 Solr 异常： " + str(e) + "，数据 rowKey:" + row['rowKey'])
             redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
             put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
             redis_client.rpush(self.redis_queue, str(put_data))
@@ -252,7 +264,7 @@ class ScrawlImagesConsumer(threading.Thread):
         try:
             self.write_hbase([data], self.hbase_table, self.thrift_ip, self.thrift_port)
         except Exception:
-            logger_c.exception('写入 Hbase 失败， Url:' + url)
+            logger_consumer.exception('写入 Hbase 失败， Url:' + url)
 
         img = self.get_hbase_row(url)
         self.send(img)
