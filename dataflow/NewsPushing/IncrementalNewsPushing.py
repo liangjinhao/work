@@ -160,3 +160,4 @@ if __name__ == '__main__':
             send([news])
         else:
             logger.info('Redis 队列中无数据，等待5s再取')
+            time.sleep(5)

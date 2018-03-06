@@ -19,7 +19,7 @@ handle.setLevel(logging.INFO)
 log_formater = logging.Formatter('%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
 handle.setFormatter(log_formater)
 
-logger_c = logging.getLogger('Rotating log')
+logger_c = logging.getLogger('consumer log')
 logger_c.addHandler(handle)
 logger_c.setLevel(logging.INFO)
 
