@@ -80,7 +80,7 @@ class UpdateDict:
 
         with open(self.hanlp_path + 'data/dictionary/custom/abcEnglish.eng') as abcE:
             for line in abcE:
-                hanlp_dict_set.add(line.split(' ')[0])
+                hanlp_dict_set.add(line.split('##')[0])
 
         my_dict = {}
         with open(self.dict_path + '_local') as f:
