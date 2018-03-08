@@ -39,6 +39,7 @@ class HanlpSegmentor(metaclass=Singleton):
         if not isJVMStarted():
             startJVM(getDefaultJVMPath(), "-Djava.class.path=" + class_path, "-Xms2g", "-Xmx2g")  # 启动JVM
         self.NLPTokenizer = JClass('com.hankcs.hanlp.tokenizer.NLPTokenizer')
+        self.NLPTokenizer.SEGMENT.enableIndexMode(False)  # 把Index模式关闭
         self.CustomDictionry = JClass('com.hankcs.hanlp.dictionary.CustomDictionary')
 
     def reload_custom_dictionry(self):
