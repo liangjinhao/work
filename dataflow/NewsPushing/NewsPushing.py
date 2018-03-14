@@ -41,6 +41,7 @@ def send(x):
         news_json = dict({
             "id": "id",
             "author": "",  # author
+            "category": "",  # 新闻类型，比如'全球'，'行业'，'股票'
             "channel": "",  # 首页 新闻中心 新闻
             "contain_image": "",  # False
             "content": "",
@@ -62,6 +63,7 @@ def send(x):
         news_json['author'] = Utils.author_norm(row['author']) \
             if row['author'] is not None else row['author']
 
+        news_json['category'] = row['category'] if 'category' in row else ''
         news_json['channel'] = row['channel']
         news_json['contain_image'] = row['contain_image']
 
