@@ -215,6 +215,8 @@ if __name__ == '__main__':
             "source": {"cf": "info", "col": "source", "type": "string"},
             "title": {"cf": "info", "col": "title", "type": "string"},
             "url": {"cf": "info", "col": "url", "type": "string"},
+            "tag": {"cf": "info", "col": "tag", "type": "string"},
+            "category": {"cf": "info", "col": "category", "type": "string"},
         }
     }
 
