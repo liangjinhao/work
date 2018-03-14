@@ -6,6 +6,7 @@ import hanlp_segmentor
 import term_ranking
 import ac_search
 import abc_time
+import update_dic
 from collections import Counter
 
 CONFIG_FILE = "path.conf"
@@ -24,16 +25,8 @@ class Collector:
         home_dir = os.path.dirname(os.path.abspath(inspect.getsourcefile(lambda: 0)))
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
-        useless_dict_path = home_dir + conf.get("dictionary", "norm_useless")
-        self.ahocorasick.add_dict(useless_dict_path)
-        self.ahocorasick.start()
-        self.te = abc_time.ABCYear()
 
-        weight_drop = home_dir + conf.get("dictionary", "weight_drop")
-        self.weight_drop = set()
-        with open(weight_drop) as f:
-            for line in f:
-                self.weight_drop.add(line.strip('\n'))
+        self.te = abc_time.ABCYear()
 
         self.phrase_dict_path = home_dir + conf.get("dictionary", "phrase")
         self.phrase_dict = dict()
@@ -41,10 +34,11 @@ class Collector:
 
     def reload_dict(self):
         self.phrase_dict = dict()
-        with open(self.phrase_dict_path + '_local') as f:
-            for line in f:
-                if not line.startswith('#') and line != '\n':
-                    self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
+        if os.path.exists(self.phrase_dict_path + '_local'):
+            with open(self.phrase_dict_path + '_local') as f:
+                for line in f:
+                    if not line.startswith('#') and line != '\n':
+                        self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
         with open(self.phrase_dict_path) as f:
             for line in f:
                 if not line.startswith('#') and line != '\n':

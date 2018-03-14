@@ -3,6 +3,7 @@ from jpype import *
 import re
 from collections import Counter
 import threading
+import time
 
 CONFIG_FILE = "path.conf"
 
@@ -32,6 +33,8 @@ class HanlpSegmentor(metaclass=Singleton):
         """
         启动JVM生产Hanlp实例
         """
+        print(time.strftime('%Y-%m-%d %H:%M:%S'), 'Hanlp 开始启动')
+
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
         class_path = conf.get("hanlp", "classpath")
@@ -41,6 +44,8 @@ class HanlpSegmentor(metaclass=Singleton):
         self.NLPTokenizer = JClass('com.hankcs.hanlp.tokenizer.NLPTokenizer')
         self.NLPTokenizer.SEGMENT.enableIndexMode(False)  # 把Index模式关闭
         self.CustomDictionry = JClass('com.hankcs.hanlp.dictionary.CustomDictionary')
+
+        print(time.strftime('%Y-%m-%d %H:%M:%S'), 'Hanlp 启动完成')
 
     def reload_custom_dictionry(self):
         """

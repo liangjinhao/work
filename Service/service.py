@@ -25,7 +25,7 @@ class MainHandler(tornado.web.RequestHandler):
 
         # 打印信息
         length = len(res)
-        print('==========>')
+        print(time.strftime('%Y-%m-%d %H:%M:%S'), '==========>')
         print("[INFO]开始处理本次请求，有" + str(length) + "条句子")
 
         # 处理句子
@@ -78,14 +78,17 @@ class MyHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         # /dict/phrase 被修改，重新加载词典
-        if event.key[0] == 'modified' and (event.key[1].split(r'/')[-1] == 'phrase' or
-                                           event.key[1].split(r'/')[-1] == 'phrase_local') and event.key[2] is False:
+        if event.key[0] == 'modified' and 'phrase' in event.key[1].split(r'/')[-1] and event.key[2] is False:
+            print(time.strftime('%Y-%m-%d %H:%M:%S'), "开始重新加载自定义不可切分词典")
             lock.acquire()
             collector_service.reload_dict()
             lock.release()
+            print(time.strftime('%Y-%m-%d %H:%M:%S'), "完成加载自定义不可切分词典")
         # /hanlp.properties 被修改，重新加载Hanlp分词词典
         if event.key[0] == 'modified' and 'hanlp' in event.key[1] and event.key[2] is False:
+            print(time.strftime('%Y-%m-%d %H:%M:%S'), "开始重新加载 Hanlp 自定义词典")
             hanlp_segmentor.HanlpSegmentor().reload_custom_dictionry()
+            print(time.strftime('%Y-%m-%d %H:%M:%S'), "完成加载 Hanlp 自定义词典")
 
 
 if __name__ == "__main__":
@@ -108,5 +111,5 @@ if __name__ == "__main__":
 
     application = tornado.web.Application([(r"/", MainHandler), ], **settings)
     application.listen(options.port)
-    print("CRF SERVICE 已经开启！")
+    print(time.strftime('%Y-%m-%d %H:%M:%S'), "CRF SERVICE 已经开启！")
     tornado.ioloop.IOLoop.instance().start()
