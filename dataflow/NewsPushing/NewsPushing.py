@@ -120,7 +120,8 @@ def classify_news(news):
 
 def get_category(data):
     try:
-        if data["channel"] and data["tag"] and data["title"] and data["content"]:
+        if "channel" in data and "tag" in data and "title" in data and "content" in data and \
+                data["channel"] and data["tag"] and data["title"] and data["content"]:
             label_data = [data["channel"], data["tag"], data["title"], data["content"]]
             label = classify_news(label_data)
         else:
@@ -190,7 +191,11 @@ def send(x):
 
         print(news_json)
 
-        requests.post('http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news', json=[news_json])
+        try:
+            requests.post('http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
+                          json=[news_json])
+        except Exception as e:
+            print(e)
 
 
 if __name__ == '__main__':
