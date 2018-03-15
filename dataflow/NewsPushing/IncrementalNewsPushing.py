@@ -100,7 +100,7 @@ def send(x):
                 "source_name": "",  # source
                 "title": "",  # title
                 "url": "",  # url
-                "tags": "",
+                "tag": "",
                 'doc_score': 1.0,
                 "time": 0,
             })
@@ -111,7 +111,7 @@ def send(x):
             news_json['author'] = Utils.author_norm(row['author']) \
                 if row['author'] is not None else row['author']
 
-            news_json['category'] = row['category'] if 'category' in row else ''
+            news_json['category'] = row['category']
             news_json['channel'] = row['channel']
             news_json['contain_image'] = row['contain_image']
 
@@ -124,6 +124,7 @@ def send(x):
             news_json['source_name'] = row['source']
             news_json['title'] = row['title']
             news_json['url'] = row['url']
+            news_json['tag'] = row['tag']
 
             try:
                 news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')

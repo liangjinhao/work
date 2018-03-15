@@ -165,7 +165,7 @@ def send(x):
 
         if news_json['category'] == '':
             category = get_category(row)
-            news_json['category'] = category if category != '' else ''
+            news_json['category'] = category if category != '' else '其他'
 
         news_json['channel'] = row['channel']
         news_json['contain_image'] = row['contain_image']
