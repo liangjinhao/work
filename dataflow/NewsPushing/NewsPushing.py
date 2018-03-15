@@ -150,7 +150,7 @@ def send(x):
             "source_name": "",  # source
             "title": "",  # title
             "url": "",  # url
-            "tags": "",
+            "tag": "",
             'doc_score': 1.0,
             "time": 0,
         })
@@ -182,6 +182,7 @@ def send(x):
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
         news_json['url'] = row['url']
+        news_json['tag'] = row['tag'] if 'tag' in row else ''
 
         if news_json['publish_time'] is not None and news_json['publish_time'] != '':
             news_json['time'] = int(datetime.datetime.strptime(news_json['publish_time'], '%Y-%m-%d %H:%M:%S')
