@@ -36,12 +36,18 @@ class UpdateDict:
         self.hanlp_path = conf.get('hanlp', 'classpath').split(':')[-1]
         self.dict_path = home_dir + conf.get("dictionary", "phrase")
 
-        self.connection = pymysql.connect(host=self.host, port=self.port, db=self.db,
-                                          user=self.user, password=self.password, charset='utf8',
-                                          cursorclass=pymysql.cursors.DictCursor)
+        try:
+            self.connection = pymysql.connect(host=self.host, port=self.port, db=self.db,
+                                              user=self.user, password=self.password, charset='utf8',
+                                              cursorclass=pymysql.cursors.DictCursor)
+        except Exception as e:
+            self.connection = None
+            self.connection_error = str(e)
+            print(time.strftime('%Y-%m-%d %H:%M:%S'), '连接线上 MySql字典库 失败：', e)
 
     def __del__(self):
-        self.connection.close()
+        if self.connection:
+            self.connection.close()
 
     def yield_data(self):
         """
@@ -72,6 +78,10 @@ class UpdateDict:
         logger = logging.getLogger('MySqlLogger')
         logger.addHandler(handle)
         logger.setLevel(logging.INFO)
+
+        if not self.connection:
+            logger.info('连接线上 MySql字典库失败：', self.connection_error)
+            return
 
         print(time.strftime('%Y-%m-%d %H:%M:%S'), '开始从线上 MySql字典库 拉取更新词典')
         logger.info('开始从线上 MySql字典库 拉取更新词典')
