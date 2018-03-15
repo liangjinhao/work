@@ -5,7 +5,7 @@ import datetime
 import pshc
 import requests
 import hashlib
-
+import Utils
 
 """
 该脚本采用Spark读取HBase的img_data表里的数据，并通过POST请求发送到Solr服务上去
@@ -90,10 +90,19 @@ def send(x):
 
         img_json['publish'] = url.lstrip('https?://').split('/')[0]
 
-        if row['publish_time'] is not None:
-            img_datetime = datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
-            img_json['time'] = int(time.mktime(img_datetime.timetuple()))
-            img_json['year'] = img_datetime.year
+        try:
+            img_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
+                                   .strftime('%s'))
+            img_json['year'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
+                                   .strftime('%Y'))
+        except:
+            try:
+                t = Utils.time_norm(row['publish_time'])
+                img_json['time'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%s'))
+                img_json['year'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%Y'))
+            except:
+                img_json['time'] = 0
+                img_json['year'] = 1970
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,

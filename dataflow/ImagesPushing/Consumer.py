@@ -146,7 +146,7 @@ class ScrawlImagesConsumer(threading.Thread):
 
             "confidence": 1.0,
             "time": 0,  # 图的时间
-            "year": 0,  # 图的年份
+            "year": 1970,  # 图的年份
             "doc_score": 1.0,  # 默认填写1, 如果图片类型是需要的置 1.0，其余的则置 0.001
             "stockcode": "",
             "title": "",  # 文章 title
@@ -195,25 +195,18 @@ class ScrawlImagesConsumer(threading.Thread):
         img_json['publish'] = url.lstrip('https?://').split('/')[0]
 
         try:
-            img_datetime = datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
-            img_json['time'] = int(time.mktime(img_datetime.timetuple()))
-            img_json['year'] = img_datetime.year
-        except Exception as e:
-            logger_time_parsing.error(str(e) + ' publish_time:' + row['publish_time'])
-            img_datetime = datetime.datetime.utcfromtimestamp(0)
-            img_json['time'] = int(time.mktime(img_datetime.timetuple()))
-            img_json['year'] = img_datetime.year
-
-        # norm_publish_time = Utils.time_norm(row['publish_time']) if row['publish_time'] is not None else ''
-        # if norm_publish_time != '':
-        #     img_datetime = datetime.datetime.strptime(norm_publish_time, '%Y-%m-%d %H:%M:%S')
-        #     img_json['time'] = int(time.mktime(img_datetime.timetuple()))
-        #     img_json['year'] = img_datetime.year
-        # else:
-        #     # 时间归一化情况较多，这里负责把归一化失败的时间记载下来
-        #     if row['publish_time'] is not None and row['publish_time'] != '':
-        #         logger_time_parsing.error('[' + str(row['publish_time']) + '] ===> ' + '[' + norm_publish_time + ']' +
-        #                                   "]，url: " + row['url'] + "，rowKey: " + row['rowKey'])
+            img_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
+                                   .strftime('%s'))
+            img_json['year'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
+                                   .strftime('%Y'))
+        except:
+            try:
+                t = Utils.time_norm(row['publish_time'])
+                img_json['time'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%s'))
+                img_json['year'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%Y'))
+            except:
+                img_json['time'] = 0
+                img_json['year'] = 1970
 
         # 图片类型共有15种：  OTHER, OTHER_MEANINGFUL, AREA_CHART, BAR_CHART, CANDLESTICK_CHART, COLUMN_CHART,
         # LINE_CHART, PIE_CHART, LINE_CHART_AND_AREA_CHART, LINE_CHART_AND_COLUMN_CHART, GRID_TABLE, LINE_TABLE,

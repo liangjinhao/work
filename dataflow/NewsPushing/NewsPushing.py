@@ -176,19 +176,23 @@ def send(x):
         news_json['crawl_time'] = row['crawl_time']
         news_json['brief'] = row['dese']
         news_json['source_url'] = row['laiyuan']
-
-        news_json['publish_time'] = Utils.time_norm(row['publish_time'])
-
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
         news_json['url'] = row['url']
         news_json['tag'] = row['tag'] if 'tag' in row else ''
 
-        if news_json['publish_time'] is not None and news_json['publish_time'] != '':
-            news_json['time'] = int(datetime.datetime.strptime(news_json['publish_time'], '%Y-%m-%d %H:%M:%S')
+        try:
+            news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
                                     .strftime('%s'))
-        else:
-            news_json['time'] = 0
+            news_json['publish_time'] = row['publish_time']
+        except:
+            try:
+                t = Utils.time_norm(news_json['publish_time'])
+                news_json['time'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%s'))
+                news_json['publish_time'] = t
+            except:
+                news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
+                news_json['time'] = 0
 
         print(news_json)
 

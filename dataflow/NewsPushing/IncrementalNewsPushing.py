@@ -121,7 +121,6 @@ def send(x):
             news_json['crawl_time'] = row['crawl_time']
             news_json['brief'] = row['dese']
             news_json['source_url'] = row['laiyuan']
-            news_json['publish_time'] = row['publish_time']
             news_json['source_name'] = row['source']
             news_json['title'] = row['title']
             news_json['url'] = row['url']
@@ -129,8 +128,15 @@ def send(x):
             try:
                 news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
                                         .strftime('%s'))
-            except Exception as e:
-                logger_time_parsing.error(str(e) + ' publish_time:' + row['publish_time'])
+                news_json['publish_time'] = row['publish_time']
+            except:
+                try:
+                    t = Utils.time_norm(news_json['publish_time'])
+                    news_json['time'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%s'))
+                    news_json['publish_time'] = t
+                except:
+                    news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
+                    news_json['time'] = 0
 
             executor.submit(post, row['rowKey'], news_json)
 
