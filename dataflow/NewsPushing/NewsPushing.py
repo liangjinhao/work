@@ -150,7 +150,7 @@ def send(x):
             "source_name": "",  # source
             "title": "",  # title
             "url": "",  # url
-            "tag": "",
+            "tags": "",
             'doc_score': 1.0,
             "time": 0,
         })
@@ -179,7 +179,7 @@ def send(x):
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
         news_json['url'] = row['url']
-        news_json['tag'] = row['tag'] if 'tag' in row else ''
+        news_json['tags'] = row['tag']
 
         try:
             news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
