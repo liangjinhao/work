@@ -224,11 +224,6 @@ class ScrawlImagesConsumer(threading.Thread):
         img_json['title'] = title
         img_json['doc_feature'] = hashlib.md5(bytes(img_title, 'utf-8')).hexdigest() if img_title != '' else ''
 
-        if img_json['image_title'] != '':
-            requests.post(self.post_url, json=[img_json])
-
-        requests.post(self.post_url, json=[img_json])
-
         try:
             response = requests.post(self.post_url, json=[img_json])
             if response.status_code != 200:
