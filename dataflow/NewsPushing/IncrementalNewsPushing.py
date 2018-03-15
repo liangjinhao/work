@@ -121,23 +121,16 @@ def send(x):
             news_json['crawl_time'] = row['crawl_time']
             news_json['brief'] = row['dese']
             news_json['source_url'] = row['laiyuan']
-
+            news_json['publish_time'] = row['publish_time']
             news_json['source_name'] = row['source']
             news_json['title'] = row['title']
             news_json['url'] = row['url']
 
-            norm_publish_time = Utils.time_norm(row['publish_time']) if row['publish_time'] is not None else ''
-            if norm_publish_time != '':
-                news_json['time'] = int(datetime.datetime.strptime(norm_publish_time, '%Y-%m-%d %H:%M:%S')
+            try:
+                news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
                                         .strftime('%s'))
-            else:
-                news_json['time'] = 0
-                # 时间归一化情况较多，这里负责把归一化失败的时间记载下来
-                if row['publish_time'] is not None and row['publish_time'] != '':
-                    logger_time_parsing.error(
-                        '[' + str(row['publish_time']) + '] ===> ' + '[' + norm_publish_time + ']' +
-                        "]，url: " + row['url'] + "，rowKey: " + row['rowKey']
-                    )
+            except Exception as e:
+                logger_time_parsing.error(str(e) + ' publish_time:' + row['publish_time'])
 
             executor.submit(post, row['rowKey'], news_json)
 
