@@ -76,24 +76,22 @@ class MongoDBListener(threading.Thread):
                     table_name = doc['ns']
                     if table_name in self.tables:
 
-                        print(doc, type(doc))
-
                         if table_name in ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.juchao_charts',
                                           'cr_data.juchao_tables']:
                             # cr_data.hb_charts,cr_data.hb_tables,cr_data.juchao_charts,cr_data.juchao_tables 表
                             # 的 pngFile, fileUrl 字段有 OSS 链接
 
                             if 'pngFile' in doc['o']:
+                                pngFile_oss = doc['o']['pngFile']
                                 doc['o']['pngFile'] = doc['o']['pngFile'].replace('hangzhou.aliyuncs',
                                                                                   'hongkong.aliyuncs')
-                                pngFile_oss = doc['o']['pngFile']
                                 r.rpush(OSS_QUEUE, pngFile_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + pngFile_oss)
 
                             if 'fileUrl' in doc['o']:
+                                fileUrl_oss = doc['o']['fileUrl']
                                 doc['o']['fileUrl'] = doc['o']['fileUrl'].replace('hangzhou.aliyuncs',
                                                                                   'hongkong.aliyuncs')
-                                fileUrl_oss = doc['o']['fileUrl']
                                 r.rpush(OSS_QUEUE, fileUrl_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + fileUrl_oss)
 
@@ -101,35 +99,33 @@ class MongoDBListener(threading.Thread):
                             # cr_data.hb_text, 'cr_data.juchao_text 表
                             # 的 fileUrl, html_file, text_file, paragraph_file 字段有 OSS 链接
                             if 'fileUrl' in doc['o']:
+                                fileUrl_oss = doc['o']['fileUrl']
                                 doc['o']['fileUrl'] = doc['o']['fileUrl'].replace('hangzhou.aliyuncs',
                                                                                   'hongkong.aliyuncs')
-                                fileUrl_oss = doc['o']['fileUrl']
                                 r.rpush(OSS_QUEUE, fileUrl_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + fileUrl_oss)
 
                             if 'html_file' in doc['o']:
+                                html_file_oss = doc['o']['html_file']
                                 doc['o']['html_file'] = doc['o']['html_file'].replace('hangzhou.aliyuncs',
                                                                                       'hongkong.aliyuncs')
-                                html_file_oss = doc['o']['html_file']
                                 r.rpush(OSS_QUEUE, html_file_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + html_file_oss)
 
                             if 'text_file' in doc['o']:
+                                text_file_oss = doc['o']['text_file']
                                 doc['o']['text_file'] = doc['o']['text_file'].replace('hangzhou.aliyuncs',
                                                                                       'hongkong.aliyuncs')
-
-                                text_file_oss = doc['o']['text_file']
                                 r.rpush(OSS_QUEUE, text_file_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + text_file_oss)
 
                             if 'paragraph_file' in doc['o']:
+                                paragraph_file_oss = doc['o']['paragraph_file']
                                 doc['o']['paragraph_file'] = doc['o']['paragraph_file'].replace('hangzhou.aliyuncs',
                                                                                                 'hongkong.aliyuncs')
-                                paragraph_file_oss = doc['o']['paragraph_file']
                                 r.rpush(OSS_QUEUE, paragraph_file_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
-                        print(json.dumps(doc, default=json_util.default))
                         r.rpush(OPLOG_QUEUE, json.dumps(doc, default=json_util.default))
                         _id = doc['o']['_id'] if '_id' in doc['o'] else doc['o2']['_id']
                         self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: ' + _id)
