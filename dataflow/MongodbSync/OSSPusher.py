@@ -37,9 +37,9 @@ class OSSPusher(threading.Thread):
         while True:
             r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
             oss_data = r.lpop(name=OSS_QUEUE)
-            oss_data = oss_data if isinstance(oss_data, str) else str(oss_data, encoding='utf-8')
 
             if oss_data:
+                oss_data = oss_data if isinstance(oss_data, str) else str(oss_data, encoding='utf-8')
                 oss_new = oss_data.replace('hangzhou.aliyuncs', 'hongkong.aliyuncs')
                 try:
                     if not self.bucket_hk.object_exists(oss_new):
