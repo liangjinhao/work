@@ -74,7 +74,7 @@ class MongoDBListener(threading.Thread):
                     table_name = doc['ns']
                     if table_name in self.tables:
 
-                        print(doc)
+                        print(doc, type(doc))
 
                         if table_name in ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.juchao_charts',
                                           'cr_data.juchao_tables']:
