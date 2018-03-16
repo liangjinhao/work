@@ -129,6 +129,6 @@ class MongoDBListener(threading.Thread):
                         r.rpush(OPLOG_QUEUE, json.dumps(doc, default=json_util.default))
                         _id = str(doc['o']['_id'] if '_id' in doc['o'] else doc['o2']['_id'])
                         self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: '
-                                         + _id + ' ' + doc['o']['op'])
+                                         + _id + ' ' + doc['op'])
 
                 time.sleep(1)
