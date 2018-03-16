@@ -35,17 +35,16 @@ class MongoDBPusher(threading.Thread):
             r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
             oplog_data = r.lpop(name=OPLOG_QUEUE)
 
-            action_type = oplog_data['op']
-            db = oplog_data['ns'].split(".")[0]
-            table_name = oplog_data['ns'].split(".")[-1]
-
-            database = self.client[db]
-            database.authenticate(USER, PASSWORD)
-            collection = database[table_name]
-
             if oplog_data:
-                # 同步 Primary 结点的更新
                 try:
+                    action_type = oplog_data['op']
+                    db = oplog_data['ns'].split(".")[0]
+                    table_name = oplog_data['ns'].split(".")[-1]
+
+                    database = self.client[db]
+                    database.authenticate(USER, PASSWORD)
+                    collection = database[table_name]
+
                     if action_type == 'i':
                         collection.insert_one(oplog_data)
                         self.logger.info('Insert to HK MongoDB: ' + oplog_data['o2'])
