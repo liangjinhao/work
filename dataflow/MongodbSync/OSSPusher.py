@@ -34,8 +34,10 @@ class OSSPusher(threading.Thread):
         self.bucket_hk = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HK, BUCKET_HK)
 
     def run(self):
+        r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+
         while True:
-            r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+
             oss_data = r.lpop(name=OSS_QUEUE)
 
             if oss_data:
@@ -44,11 +46,11 @@ class OSSPusher(threading.Thread):
                 file_name = oss_data.split('aliyuncs.com/')[-1]
                 try:
                     if not self.bucket_hk.object_exists(file_name):
-                        print('开始下载', oss_data)
+                        # print('开始下载', oss_data)
                         file_stream = self.bucket_hz.get_object(file_name)
-                        print('开始上传', oss_new)
+                        # print('开始上传', oss_new)
                         self.bucket_hk.put_object(file_name, file_stream)
-                        self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
+                        # self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:
                     self.logger.error('转写 oss 失败，oss 为: ' + oss_new + '错误为: ' + str(e))
                     r.rpush(OSS_QUEUE, oss_data)

@@ -34,8 +34,9 @@ class MongoDBPusher(threading.Thread):
         self.client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT)
 
     def run(self):
+        r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+
         while True:
-            r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
             oplog_data = r.lpop(name=OPLOG_QUEUE)
 
             if oplog_data:
@@ -45,7 +46,6 @@ class MongoDBPusher(threading.Thread):
                     action_type = oplog_data['op']
                     db = oplog_data['ns'].split(".")[0]
                     table_name = oplog_data['ns'].split(".")[-1]
-
                     database = self.client[db]
                     database.authenticate(USER, PASSWORD)
                     collection = database[table_name]
@@ -55,19 +55,19 @@ class MongoDBPusher(threading.Thread):
                     if action_type == 'i':
                         try:
                             collection.insert_one(oplog_data['o'])
-                            self.logger.info('Insert to HK MongoDB: ' + _id)
+                            # self.logger.info('Insert to HK MongoDB: ' + _id)
                         except DuplicateKeyError:
                             oplog_data['op'] = 'd'
                             collection.delete_one({'_id': oplog_data['o']['_id']})
                             oplog_data['op'] = 'i'
                             collection.insert_one(oplog_data['o'])
-                            self.logger.info('Insert to HK MongoDB: ' + _id)
+                            # self.logger.info('Insert to HK MongoDB: ' + _id)
                     elif action_type == 'u':
                         collection.update_one(oplog_data['o2'], oplog_data['o'])
-                        self.logger.info('Update to HK MongoDB: ' + _id)
+                        # self.logger.info('Update to HK MongoDB: ' + _id)
                     elif action_type == 'd':
                         collection.delete_one(oplog_data['o'])
-                        self.logger.info('Delete to HK MongoDB: ' + _id)
+                        # self.logger.info('Delete to HK MongoDB: ' + _id)
                 except Exception as e:
                     r.rpush(OPLOG_QUEUE, oplog_data)
                     self.logger.error('操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 oplog 为: '
