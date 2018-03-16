@@ -4,6 +4,7 @@ import threading
 import pymongo
 import bson
 import redis
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -127,7 +128,7 @@ class MongoDBListener(threading.Thread):
                                 r.rpush(OSS_QUEUE, paragraph_file_oss)
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
-                        r.rpush(OPLOG_QUEUE, doc)
+                        r.rpush(OPLOG_QUEUE, json.dumps(doc))
                         _id = doc['o']['_id'] if '_id' in doc['o'] else doc['o2']['_id']
                         self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: ' + _id)
 

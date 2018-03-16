@@ -2,6 +2,7 @@ import pymongo
 import redis
 import threading
 import time
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -34,7 +35,7 @@ class MongoDBPusher(threading.Thread):
         while True:
             r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
             oplog_data = r.lpop(name=OPLOG_QUEUE)
-
+            oplog_data = json.loads(oplog_data)
             if oplog_data:
                 try:
                     action_type = oplog_data['op']
