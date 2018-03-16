@@ -19,8 +19,8 @@ PASSWORD = '3e8beb9fb9a1'
 # Redis 信息
 REDIS_IP = '10.46.231.24'  # 10.46.231.24 47.97.27.84
 REDIS_PORT = 6379
-OPLOG_QUEUE = 'oplog_queue'
-OSS_QUEUE = 'oss_queue'
+OPLOG_QUEUE = 'oplog'
+OSS_QUEUE = 'oss'
 
 
 class MongoDBListener(threading.Thread):

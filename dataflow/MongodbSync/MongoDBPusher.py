@@ -17,7 +17,7 @@ PASSWORD = '9c9df8aebf04'
 # Redis 信息
 REDIS_IP = '47.97.27.84'
 REDIS_PORT = 6379
-OPLOG_QUEUE = 'oplog_queue'
+OPLOG_QUEUE = 'oplog'
 
 
 class MongoDBPusher(threading.Thread):

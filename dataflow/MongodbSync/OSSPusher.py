@@ -9,7 +9,7 @@ from logging.handlers import RotatingFileHandler
 # Redis 信息
 REDIS_IP = '47.97.27.84'
 REDIS_PORT = 6379
-OSS_QUEUE = 'oss_queue'
+OSS_QUEUE = 'oss'
 
 # OSS 信息
 ACCESS_KEY_ID = 'LTAIUckqp8PIWkm9'
