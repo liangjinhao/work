@@ -53,9 +53,9 @@ class MongoDBListener(threading.Thread):
         if epoch:
             self.start_ts = bson.timestamp.Timestamp(epoch, 1024)
         else:
-            self.start_ts = self.client.local.oplog.find().sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts']
+            self.start_ts = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts']
 
-        self.logger.info('监听起始时间： ' + str(self.start_ts))
+        self.logger.info('监听起始时间： ' + str(datetime.datetime.utcfromtimestamp(self.start_ts.time)))
 
         if isinstance(tables, list):
             self.tables = tables
