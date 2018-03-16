@@ -47,15 +47,15 @@ class MongoDBPusher(threading.Thread):
 
                     if action_type == 'i':
                         collection.insert_one(oplog_data)
-                        self.logger.info('Insert to HK MongoDB: ' + oplog_data['o2'])
+                        self.logger.info('Insert to HK MongoDB: ' + oplog_data['o']['_id'])
                     elif action_type == 'u':
                         collection.update_one(oplog_data['o2'], oplog_data)
-                        self.logger.info('Update to HK MongoDB: ' + oplog_data['o2'])
+                        self.logger.info('Update to HK MongoDB: ' + oplog_data['o']['_id'])
                     elif action_type == 'd':
                         collection.delete_one(oplog_data['o2'])
-                        self.logger.info('Delete to HK MongoDB: ' + oplog_data['o2'])
+                        self.logger.info('Delete to HK MongoDB: ' + oplog_data['o']['_id'])
                 except Exception as e:
-                    r.rpush(oplog_data)
+                    r.rpush(OPLOG_QUEUE, oplog_data)
                     self.logger.error('操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 oplog 为: '
                                       + oplog_data + '错误为: ' + str(e))
             else:

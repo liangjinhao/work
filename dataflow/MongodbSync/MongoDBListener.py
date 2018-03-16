@@ -126,6 +126,6 @@ class MongoDBListener(threading.Thread):
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
                         r.rpush(OPLOG_QUEUE, doc)
-                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: ' + doc['o2'])
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: ' + doc['o']['_id'])
 
                 time.sleep(1)

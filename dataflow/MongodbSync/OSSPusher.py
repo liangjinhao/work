@@ -47,7 +47,7 @@ class OSSPusher(threading.Thread):
                         self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:
                     self.logger.error('转写 oss 失败，oss 为: ' + oss_new + '错误为: ' + str(e))
-                    r.rpush(oss_data)
+                    r.rpush(OSS_QUEUE, oss_data)
             else:
                 # self.logger.info('Redis oss 队列中无数据，等待1s再取')
                 time.sleep(1)
