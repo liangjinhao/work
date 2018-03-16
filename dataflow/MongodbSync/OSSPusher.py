@@ -16,8 +16,8 @@ ACCESS_KEY_ID = 'LTAIUckqp8PIWkm9'
 ACCESS_KEY_SECRET = 'jCsTUNa9l9zloXzdW6xvksFpDaMwY1'
 BUCKET_HZ = 'abc-crawler'
 BUCKET_HK = 'hk-crawler'
-ENDPOINT_HZ = 'oss-cn-hangzhou-internal.aliyuncs.com'
-ENDPOINT_HK = 'oss-cn-hongkong-internal.aliyuncs.com'
+ENDPOINT_HZ = 'oss-cn-hangzhou.aliyuncs.com'
+ENDPOINT_HK = 'oss-cn-hongkong.aliyuncs.com'
 
 
 class OSSPusher(threading.Thread):
@@ -40,13 +40,14 @@ class OSSPusher(threading.Thread):
 
             if oss_data:
                 oss_data = oss_data if isinstance(oss_data, str) else str(oss_data, encoding='utf-8')
-                oss_new = oss_data.replace('hangzhou.aliyuncs', 'hongkong.aliyuncs')
+                oss_new = oss_data.replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                file_name = oss_data.split('aliyuncs.com/')[-1]
                 try:
-                    if not self.bucket_hk.object_exists(oss_new):
-                        print('开始下载文件' + oss_data)
-                        file = self.bucket_hz.get_object(oss_data)
-                        print('开始存储文件' + oss_new)
-                        self.bucket_hk.put_object(oss_new, file)
+                    if not self.bucket_hk.object_exists(file_name):
+                        print('开始下载', file_name)
+                        file_stream = self.bucket_hz.get_object(file_name)
+                        print('开始上传', file_name)
+                        self.bucket_hk.put_object(file_name, file_stream)
                         self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:
                     self.logger.error('转写 oss 失败，oss 为: ' + oss_new + '错误为: ' + str(e))
