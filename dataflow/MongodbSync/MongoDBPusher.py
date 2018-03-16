@@ -1,4 +1,5 @@
 import pymongo
+from pymongo.errors import DuplicateKeyError
 import redis
 import threading
 import time
@@ -53,8 +54,9 @@ class MongoDBPusher(threading.Thread):
                         try:
                             collection.insert_one(oplog_data['o'])
                             self.logger.info('Insert to HK MongoDB: ' + _id)
-                        except:
-                            collection.update_one({"_id": oplog_data['o']['_id']}, oplog_data['o'], upsert=True)
+                        except DuplicateKeyError:
+                            collection.delete_one(oplog_data['o'])
+                            collection.insert_one(oplog_data['o'])
                             self.logger.info('Insert to HK MongoDB: ' + _id)
                     elif action_type == 'u':
                         collection.update_one(oplog_data['o2'], oplog_data['o'])
