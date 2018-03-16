@@ -35,7 +35,7 @@ class MongoDBListener(threading.Thread):
         super(MongoDBListener, self).__init__()
 
         # 记载 MongoDBListener 线程情况的 logger
-        handle = RotatingFileHandler('./MongoDBListener.log', maxBytes=5 * 1024 * 1024, backupCount=5)
+        handle = RotatingFileHandler('./MongoDBListener.log', maxBytes=50 * 1024 * 1024, backupCount=5)
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
 

@@ -27,7 +27,7 @@ class MongoDBPusher(threading.Thread):
         super(MongoDBPusher, self).__init__()
 
         # 记载 MongoDBPusher 线程情况的 logger
-        handle = RotatingFileHandler('./MongoDBPusher.log', maxBytes=5 * 1024 * 1024, backupCount=5)
+        handle = RotatingFileHandler('./MongoDBPusher.log', maxBytes=50 * 1024 * 1024, backupCount=5)
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
 

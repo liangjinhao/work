@@ -26,7 +26,7 @@ class OSSPusher(threading.Thread):
         super(OSSPusher, self).__init__()
 
         # 记载 OSSPusher 线程情况的 logger
-        handle = RotatingFileHandler('./OSSPusher.log', maxBytes=5 * 1024 * 1024, backupCount=5)
+        handle = RotatingFileHandler('./OSSPusher.log', maxBytes=50 * 1024 * 1024, backupCount=5)
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
 
