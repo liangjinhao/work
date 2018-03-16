@@ -50,8 +50,12 @@ class MongoDBPusher(threading.Thread):
                     _id = oplog_data['o']['_id'] if '_id' in oplog_data['o'] else oplog_data['o2']['_id']
 
                     if action_type == 'i':
-                        collection.insert_one(oplog_data['o'])
-                        self.logger.info('Insert to HK MongoDB: ' + _id)
+                        try:
+                            collection.insert_one(oplog_data['o'])
+                            self.logger.info('Insert to HK MongoDB: ' + _id)
+                        except:
+                            collection.update_one({"_id": oplog_data['o']['_id']}, oplog_data['o'], upsert=True)
+                            self.logger.info('Insert to HK MongoDB: ' + _id)
                     elif action_type == 'u':
                         collection.update_one(oplog_data['o2'], oplog_data['o'])
                         self.logger.info('Update to HK MongoDB: ' + _id)
