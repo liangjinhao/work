@@ -1,6 +1,6 @@
 import logging
-from MongodbSync import MongoDBPusher
-from MongodbSync import OSSPusher
+import MongoDBPusher
+import OSSPusher
 
 if __name__ == '__main__':
 

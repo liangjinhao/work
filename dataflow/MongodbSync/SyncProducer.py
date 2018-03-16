@@ -1,4 +1,4 @@
-from MongodbSync import MongoDBListener
+import MongoDBListener
 import logging
 
 if __name__ == '__main__':
