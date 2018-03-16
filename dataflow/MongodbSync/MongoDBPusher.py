@@ -55,7 +55,9 @@ class MongoDBPusher(threading.Thread):
                             collection.insert_one(oplog_data['o'])
                             self.logger.info('Insert to HK MongoDB: ' + _id)
                         except DuplicateKeyError:
+                            oplog_data['op'] = 'd'
                             collection.delete_one(oplog_data['o'])
+                            oplog_data['op'] = 'i'
                             collection.insert_one(oplog_data['o'])
                             self.logger.info('Insert to HK MongoDB: ' + _id)
                     elif action_type == 'u':
