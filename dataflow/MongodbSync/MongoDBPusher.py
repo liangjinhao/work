@@ -37,8 +37,10 @@ class MongoDBPusher(threading.Thread):
         while True:
             r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
             oplog_data = r.lpop(name=OPLOG_QUEUE)
-            oplog_data = json.loads(oplog_data, object_hook=json_util.object_hook)
+
             if oplog_data:
+                oplog_data = json.loads(oplog_data, object_hook=json_util.object_hook)
+
                 try:
                     action_type = oplog_data['op']
                     db = oplog_data['ns'].split(".")[0]
@@ -56,7 +58,7 @@ class MongoDBPusher(threading.Thread):
                             self.logger.info('Insert to HK MongoDB: ' + _id)
                         except DuplicateKeyError:
                             oplog_data['op'] = 'd'
-                            collection.delete_one(oplog_data['o'])
+                            collection.delete_one({'_id': oplog_data['o']['_id']})
                             oplog_data['op'] = 'i'
                             collection.insert_one(oplog_data['o'])
                             self.logger.info('Insert to HK MongoDB: ' + _id)

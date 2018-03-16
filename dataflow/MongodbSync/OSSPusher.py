@@ -26,7 +26,7 @@ class OSSPusher(threading.Thread):
         super(OSSPusher, self).__init__()
 
         # 记载 OSSPusher 线程情况的 logger
-        handle = RotatingFileHandler('./OssPusher.log', maxBytes=5 * 1024 * 1024, backupCount=5)
+        handle = RotatingFileHandler('./OSSPusher.log', maxBytes=5 * 1024 * 1024, backupCount=5)
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
 
@@ -43,7 +43,9 @@ class OSSPusher(threading.Thread):
                 oss_new = oss_data.replace('hangzhou.aliyuncs', 'hongkong.aliyuncs')
                 try:
                     if not self.bucket_hk.object_exists(oss_new):
+                        print('开始下载文件' + oss_data)
                         file = self.bucket_hz.get_object(oss_data)
+                        print('开始存储文件' + oss_new)
                         self.bucket_hk.put_object(oss_new, file)
                         self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:

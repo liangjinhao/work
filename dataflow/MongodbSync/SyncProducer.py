@@ -4,7 +4,7 @@ import logging
 if __name__ == '__main__':
 
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s",
         datefmt="%m-%d %H:%M:%S"
     )
