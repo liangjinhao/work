@@ -44,9 +44,9 @@ class OSSPusher(threading.Thread):
                 file_name = oss_data.split('aliyuncs.com/')[-1]
                 try:
                     if not self.bucket_hk.object_exists(file_name):
-                        print('开始下载', file_name)
+                        print('开始下载', oss_data)
                         file_stream = self.bucket_hz.get_object(file_name)
-                        print('开始上传', file_name)
+                        print('开始上传', oss_new)
                         self.bucket_hk.put_object(file_name, file_stream)
                         self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:
