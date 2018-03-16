@@ -57,10 +57,9 @@ class MongoDBListener(threading.Thread):
 
         self.logger.info('监听起始时间： ' + str(datetime.datetime.utcfromtimestamp(self.start_ts.time)))
 
-        if isinstance(tables, list):
-            self.tables = tables
-            self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
-                           'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
+        self.tables = tables
+        self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
+                       'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
 
     def run(self):
         while True:
