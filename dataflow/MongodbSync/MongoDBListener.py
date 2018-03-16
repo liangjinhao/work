@@ -74,6 +74,8 @@ class MongoDBListener(threading.Thread):
                     table_name = doc['ns']
                     if table_name in self.tables:
 
+                        print(doc)
+
                         if table_name in ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.juchao_charts',
                                           'cr_data.juchao_tables']:
                             # cr_data.hb_charts,cr_data.hb_tables,cr_data.juchao_charts,cr_data.juchao_tables 表
@@ -126,6 +128,7 @@ class MongoDBListener(threading.Thread):
                                 self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
                         r.rpush(OPLOG_QUEUE, doc)
-                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: ' + doc['o']['_id'])
+                        _id = doc['o']['_id'] if '_id' in doc['o'] else doc['o2']['_id']
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: ' + _id)
 
                 time.sleep(1)
