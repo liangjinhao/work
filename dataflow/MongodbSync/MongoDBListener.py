@@ -107,7 +107,7 @@ class MongoDBListener(threading.Thread):
                             oss_size = r.llen(OSS_QUEUE)
                             if oplog_siez > MAX_OPLOG_SIZE or oss_size > MAX_OSS_SIZE:
                                 self.logger.warning('Redis 队列超过设置的长度限制，开始等候5分钟 ' +
-                                                    'OPLOG: ' + str(oplog_siez) + 'OSS: ' + str(oss_size))
+                                                    'OPLOG: ' + str(oplog_siez) + ' OSS: ' + str(oss_size))
                                 time.sleep(5*60)
                                 current_oplog_time = self.client.local.oplog.rs.find()\
                                     .sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts']
