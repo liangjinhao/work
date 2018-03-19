@@ -1,10 +1,11 @@
 from pyspark import SparkConf, SparkContext
-from pyspark.sql import SQLContext
+from pyspark.sql import SQLContext, SparkSession
 import datetime
 import pshc
 import Utils
 import requests
 import re
+import json
 
 """
 该脚本采用Spark读取HBase的news_data表里的数据，并通过POST请求发送到Solr服务上去
@@ -134,6 +135,8 @@ def get_category(data):
 
 def send(x):
 
+    result = []
+
     for row in x:
 
         news_json = dict({
@@ -153,6 +156,8 @@ def send(x):
             "tags": "",
             'doc_score': 1.0,
             "time": 0,
+            "PUSH_STATUS": False,
+            "PUSH_TIME": '2018-01-01 0:0:0.000000'
         })
 
         news_json['id'] = row['id']
@@ -199,14 +204,28 @@ def send(x):
         try:
             requests.post('http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
                           json=[news_json])
+            news_json['PUSH_STATUS'] = True
+            news_json['PUSH_TIME'] = str(datetime.datetime.now())
         except Exception as e:
-            print(e)
+            news_json['PUSH_STATUS'] = False
+            news_json['PUSH_TIME'] = str(datetime.datetime.now())
+
+        result.append(news_json)
+
+    return result
 
 
 if __name__ == '__main__':
     conf = SparkConf().setAppName("Push_News")
     sc = SparkContext(conf=conf)
     sqlContext = SQLContext(sc)
+
+    sparkSession = SparkSession.builder \
+        .enableHiveSupport() \
+        .config(conf=conf) \
+        .getOrCreate()
+    sparkSession.sparkContext.setLogLevel('WARN')
+
     connector = pshc.PSHC(sc, sqlContext)
 
     catelog = {
@@ -215,6 +234,7 @@ if __name__ == '__main__':
         "columns": {
             "id": {"cf": "rowkey", "col": "key", "type": "string"},
             "author": {"cf": "info", "col": "author", "type": "string"},
+            "category": {"cf": "info", "col": "category", "type": "string"},
             "channel": {"cf": "info", "col": "channel", "type": "string"},
             "contain_image": {"cf": "info", "col": "contain_image", "type": "string"},
             "content": {"cf": "info", "col": "content", "type": "string"},
@@ -226,15 +246,43 @@ if __name__ == '__main__':
             "title": {"cf": "info", "col": "title", "type": "string"},
             "url": {"cf": "info", "col": "url", "type": "string"},
             "tag": {"cf": "info", "col": "tag", "type": "string"},
-            "category": {"cf": "info", "col": "category", "type": "string"},
         }
     }
 
-    startTime = datetime.datetime.strptime('2018-1-31 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-    stopTime = datetime.datetime.strptime('2018-05-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    load_from_hive = False
 
-    df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime, stop_time=stopTime,
-                                     repartition_num=None, cached=True)
+    if load_from_hive:
+        conf = sparkSession.read.text('hdfs://10.27.71.108:8020/spark_data/news_pushing.conf')
+        start_time = json.loads(conf.first()[0])['value']
+        df = sparkSession.sql("SELECT * FROM abc.news_data_pushing WHERE PUSH_STATUS = false AND PUSH_TIME >= '"
+                              + start_time + "'")
+    else:
+        startTime = datetime.datetime.strptime('2018-1-31 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+        stopTime = datetime.datetime.strptime('2050-01-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+
+        df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
+                                         stop_time=stopTime,
+                                         repartition_num=None, cached=True)
     df.show(10)
     print('======count=======', df.count())
-    df.rdd.foreachPartition(lambda x: send(x))
+    result_rdd = df.rdd.foreachPartition(lambda x: send(x))
+
+    result_df = sparkSession.createDataFrame(result_rdd)
+
+    # 计算处理后的成功错误条数 比例
+    result_df.registerTempTable('res_table')
+
+    correct_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = true").first()[0]
+    wrong_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = true").first()[0]
+    last_push_time = sparkSession.sql("SELECT PUSH_TIME from res_table ORDER BY PUSH_TIME DESC LIMIT 1").first()[0]
+
+    print('======推送完成=======')
+    print('成功数目：', correct_num, correct_num/(correct_num+wrong_num))
+    print('失败数目：', wrong_num, wrong_num/(correct_num+wrong_num))
+    df.show(result_df)
+
+    result_df.write.saveAsTable('abc.news_data_pushing', mode='append', partitionBy='PUSH_TIME')
+
+    sc.parallelize([('start_time', last_push_time)]).toDF(['key', 'value']).write.mode(
+        'overwrite').format('json').save('hdfs://10.27.71.108:8020/spark_data/news_pushing.conf')
+
