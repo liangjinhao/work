@@ -66,8 +66,12 @@ class MongoDBPusher(threading.Thread):
                             collection.insert_one(oplog_data['o'])
                             self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + str(_id))
                     elif action_type == 'u':
-                        collection.update_one(oplog_data['o2'], oplog_data['o'])
-                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
+                        try:
+                            collection.update_one(oplog_data['o2'], oplog_data['o'])
+                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
+                        except ValueError:
+                            collection.replace_one(oplog_data['o2'], oplog_data['o'], True)
+                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
                     elif action_type == 'd':
                         collection.delete_one(oplog_data['o'])
                         self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Delete to HK MongoDB: ' + str(_id))
