@@ -27,7 +27,10 @@ class MongoDBPusher(threading.Thread):
         super(MongoDBPusher, self).__init__()
 
         # 记载 MongoDBPusher 线程情况的 logger
-        handle = RotatingFileHandler('./MongoDBPusher.log', maxBytes=50 * 1024 * 1024, backupCount=5)
+        handle = RotatingFileHandler('./mongodb_pusher.log', maxBytes=50 * 1024 * 1024, backupCount=3)
+        handle.setFormatter(logging.Formatter(
+            '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
+        handle.setLevel(logging.INFO)
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
 
@@ -55,23 +58,23 @@ class MongoDBPusher(threading.Thread):
                     if action_type == 'i':
                         try:
                             collection.insert_one(oplog_data['o'])
-                            # self.logger.info('Insert to HK MongoDB: ' + _id)
+                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + _id)
                         except DuplicateKeyError:
                             oplog_data['op'] = 'd'
                             collection.delete_one({'_id': oplog_data['o']['_id']})
                             oplog_data['op'] = 'i'
                             collection.insert_one(oplog_data['o'])
-                            # self.logger.info('Insert to HK MongoDB: ' + _id)
+                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + _id)
                     elif action_type == 'u':
                         collection.update_one(oplog_data['o2'], oplog_data['o'])
-                        # self.logger.info('Update to HK MongoDB: ' + _id)
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + _id)
                     elif action_type == 'd':
                         collection.delete_one(oplog_data['o'])
-                        # self.logger.info('Delete to HK MongoDB: ' + _id)
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Delete to HK MongoDB: ' + _id)
                 except Exception as e:
                     r.rpush(OPLOG_QUEUE, oplog_data)
-                    self.logger.error('操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 oplog 为: '
-                                      + str(oplog_data) + '错误为: ' + str(e))
+                    self.logger.error(str(r.llen(OPLOG_QUEUE)) + '    操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 '
+                                      'oplog 为: ' + str(oplog_data) + '错误为: ' + str(e))
             else:
-                # self.logger.info('Redis oplog 队列中无数据，等待1s再取')
-                time.sleep(1)
+                self.logger.info('Redis oplog 队列中无数据，等待10s再取')
+                time.sleep(10)

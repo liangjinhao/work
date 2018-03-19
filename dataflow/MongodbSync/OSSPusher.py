@@ -26,7 +26,10 @@ class OSSPusher(threading.Thread):
         super(OSSPusher, self).__init__()
 
         # 记载 OSSPusher 线程情况的 logger
-        handle = RotatingFileHandler('./OSSPusher.log', maxBytes=50 * 1024 * 1024, backupCount=5)
+        handle = RotatingFileHandler('./oss_pusher.log', maxBytes=50 * 1024 * 1024, backupCount=3)
+        handle.setFormatter(logging.Formatter(
+            '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
+        handle.setLevel(logging.INFO)
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
 
@@ -50,10 +53,10 @@ class OSSPusher(threading.Thread):
                         file_stream = self.bucket_hz.get_object(file_name)
                         # print('开始上传', oss_new)
                         self.bucket_hk.put_object(file_name, file_stream)
-                        # self.logger.info('转写 oss 成功，oss 为: ' + oss_new)
+                        self.logger.info(str(r.llen(OSS_QUEUE)) + '    转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:
-                    self.logger.error('转写 oss 失败，oss 为: ' + oss_new + '错误为: ' + str(e))
+                    self.logger.error(str(r.llen(OSS_QUEUE)) + '    转写 oss 失败，oss 为: ' + oss_new + '错误为: ' + str(e))
                     r.rpush(OSS_QUEUE, oss_data)
             else:
-                # self.logger.info('Redis oss 队列中无数据，等待1s再取')
-                time.sleep(1)
+                self.logger.info('Redis oss 队列中无数据，等待10s再取')
+                time.sleep(10)
