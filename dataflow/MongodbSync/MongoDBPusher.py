@@ -58,19 +58,19 @@ class MongoDBPusher(threading.Thread):
                     if action_type == 'i':
                         try:
                             collection.insert_one(oplog_data['o'])
-                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + _id)
+                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + str(_id))
                         except DuplicateKeyError:
                             oplog_data['op'] = 'd'
                             collection.delete_one({'_id': oplog_data['o']['_id']})
                             oplog_data['op'] = 'i'
                             collection.insert_one(oplog_data['o'])
-                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + _id)
+                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + str(_id))
                     elif action_type == 'u':
                         collection.update_one(oplog_data['o2'], oplog_data['o'])
-                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + _id)
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
                     elif action_type == 'd':
                         collection.delete_one(oplog_data['o'])
-                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Delete to HK MongoDB: ' + _id)
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Delete to HK MongoDB: ' + str(_id))
                 except Exception as e:
                     r.rpush(OPLOG_QUEUE, oplog_data)
                     self.logger.error(str(r.llen(OPLOG_QUEUE)) + '    操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 '

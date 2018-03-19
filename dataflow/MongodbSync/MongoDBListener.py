@@ -158,14 +158,14 @@ class MongoDBListener(threading.Thread):
                             self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: '
                                              + _id + ' ' + doc['op'])
 
-                        self.status['time'] = str(datetime.datetime.now()).split('.')[0]
-                        self.status['last_op'] = str(datetime.datetime.utcfromtimestamp(doc['ts'].time))
-                        self.status['number'] = self.status['number'] + 1
-                        self.status['table_info'][table_name] = {
-                            'last_op': self.status['last_op'],
-                            'count': 1 if table_name not in self.status['table_info']
-                            else self.status['table_info'][table_name]['count'] + 1
-                        }
+                            self.status['time'] = str(datetime.datetime.now()).split('.')[0]
+                            self.status['last_op'] = str(datetime.datetime.utcfromtimestamp(doc['ts'].time))
+                            self.status['number'] = self.status['number'] + 1
+                            self.status['table_info'][table_name] = {
+                                'last_op': self.status['last_op'],
+                                'count': 1 if table_name not in self.status['table_info']
+                                else self.status['table_info'][table_name]['count'] + 1
+                            }
 
                         if time.time() - write_ts > write_interval:
                             write_ts = time.time()
