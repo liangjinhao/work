@@ -113,7 +113,7 @@ class MongoDBListener(threading.Thread):
                                     .sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts']
                                 current_op_time = int(datetime.datetime.strptime(
                                     self.status['last_op'], '%Y-%m-%d %H:%M:%S').strftime('%s'))
-                                if current_oplog_time > current_op_time:
+                                if current_oplog_time.time > current_op_time:
                                     self.logger.error('由于 Redis 队列堆积未被消费，长时间睡眠监听程序已造成数据丢失。现在 Oplog '
                                                       '的最早时间为 '
                                                       + str(datetime.datetime.utcfromtimestamp(current_oplog_time.time))
