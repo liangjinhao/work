@@ -68,9 +68,9 @@ class ScrawlImagesProducer(threading.Thread):
                                                delivery_mode=2,  # make message persistent
                                            ))
             if result:
-                logger_producer.info("从 Redis 推送数据到 RabbitMQ 成功： " + message)
+                logger_producer.info(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 成功： " + message)
             else:
-                logger_producer.error("从 Redis 推送数据到 RabbitMQ 失败： " + message)
+                logger_producer.error(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 失败： " + message)
                 r.rpush(self.redis_queue_name, message)
 
         # connection.close()

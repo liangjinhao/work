@@ -252,25 +252,26 @@ class ScrawlImagesConsumer(threading.Thread):
         "result": ['line_chart']}'
         :return:
         """
-        body = str(body, encoding='utf-8') if isinstance(body, bytes) else body
-        body = json.loads(body)
-        url = hashlib.md5(str(body['url']).encode()).hexdigest()
-        if body['ok']:
-            image_type = str(body['result'])
-        else:
-            image_type = str([])
-        data = {'url': url, 'img_type': image_type}
-
         try:
+            body = str(body, encoding='utf-8') if isinstance(body, bytes) else body
+            body = json.loads(body)
+            url = hashlib.md5(str(body['url']).encode()).hexdigest()
+            if body['ok']:
+                image_type = str(body['result'])
+            else:
+                image_type = str([])
+            data = {'url': url, 'img_type': image_type}
+
             self.write_hbase([data], self.hbase_table, self.thrift_ip, self.thrift_port)
-        except Exception:
-            logger_consumer.exception('写入 Hbase 失败， Url:' + url)
 
-        img = self.get_hbase_row(url)
-        self.send(img)
+            img = self.get_hbase_row(url)
+            self.send(img)
 
-        # To process body
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+            # To process body
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        except Exception as e:
+            logger_consumer.exception('callback 出现错误' + str(e))
 
     def run(self):
 

@@ -65,12 +65,13 @@ def post(rowkey, news_json, write_back_redis=True):
     try:
         response = requests.post(POST_URL, json=[news_json])
         if response.status_code != 200 and write_back_redis:
-            logger.error("推送 Solr 返回响应代码 " + str(response.status_code) + "，数据 rowKey:" + rowkey)
+            logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 返回响应代码 " +
+                         str(response.status_code) + "，数据 rowKey:" + rowkey)
             redis_client.rpush(REDIS_QUEUE, rowkey)
         else:
-            logger.info("推送 Solr 完成， rowKey:" + rowkey)
+            logger.info(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 完成， rowKey:" + rowkey)
     except Exception as e:
-        logger.error("推送 Solr 异常： " + str(e) + "，数据 rowKey:" + rowkey)
+        logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 异常： " + str(e) + "，数据 rowKey:" + rowkey)
         if write_back_redis:
             redis_client.rpush(REDIS_QUEUE, rowkey)
 
