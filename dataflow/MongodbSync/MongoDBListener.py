@@ -24,7 +24,7 @@ OPLOG_QUEUE = 'oplog'
 OSS_QUEUE = 'oss'
 
 # 取MongoDB oplog数据的间隔，太小会导致生产数据太快而堆积数据
-INTERVAL = 0.01
+INTERVAL = 0.005
 
 # Redis 中队列的最大长度
 MAX_OPLOG_SIZE = 100000
