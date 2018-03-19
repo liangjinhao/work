@@ -24,7 +24,7 @@ OPLOG_QUEUE = 'oplog'
 OSS_QUEUE = 'oss'
 
 # 取MongoDB oplog数据的间隔，太小会导致生产数据太快而堆积数据
-INTERVAL = 0.005
+INTERVAL = 0.002
 
 # Redis 中队列的最大长度
 MAX_OPLOG_SIZE = 100000
@@ -62,6 +62,8 @@ class MongoDBListener(threading.Thread):
 
             if oplog_time.time < status_time:
                 self.start_ts = bson.timestamp.Timestamp(status_time, 1024)
+            else:
+                self.start_ts = oplog_time
         else:
             self.start_ts = oplog_time
 
