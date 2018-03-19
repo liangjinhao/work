@@ -27,8 +27,8 @@ OSS_QUEUE = 'oss'
 INTERVAL = 0.002
 
 # Redis 中队列的最大长度
-MAX_OPLOG_SIZE = 1000000
-MAX_OSS_SIZE = 1000000
+MAX_OPLOG_SIZE = 500000
+MAX_OSS_SIZE = 500000
 
 
 class MongoDBListener(threading.Thread):
