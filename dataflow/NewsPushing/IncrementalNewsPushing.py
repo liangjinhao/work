@@ -9,6 +9,7 @@ from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
 from hbase.Hbase import *
 from logging.handlers import RotatingFileHandler
+import traceback
 
 
 """
@@ -49,7 +50,8 @@ def get_hbase_row(rowkey):
             result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
         return result
     else:
-        logger.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8'))
+        logger.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8')
+                     + '，错误为' + traceback.format_exc())
         return {}
 
 
@@ -66,12 +68,14 @@ def post(rowkey, news_json, write_back_redis=True):
         response = requests.post(POST_URL, json=[news_json])
         if response.status_code != 200 and write_back_redis:
             logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 返回响应代码 " +
-                         str(response.status_code) + "，数据 rowKey:" + rowkey)
+                         str(response.status_code) + "，数据 rowKey:" + rowkey
+                         + '，错误为' + traceback.format_exc())
             redis_client.rpush(REDIS_QUEUE, rowkey)
         else:
             logger.info(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 完成， rowKey:" + rowkey)
     except Exception as e:
-        logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 异常： " + str(e) + "，数据 rowKey:" + rowkey)
+        logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 异常： " + str(e) + "，数据 rowKey:" + rowkey
+                     + '，错误为' + traceback.format_exc())
         if write_back_redis:
             redis_client.rpush(REDIS_QUEUE, rowkey)
 
@@ -111,8 +115,7 @@ def send(x):
 
             news_json['author'] = Utils.author_norm(row['author']) \
                 if row['author'] is not None else row['author']
-
-            news_json['category'] = row['category']
+            news_json['category'] = row['category'] if 'category' in row else '其他'
             news_json['channel'] = row['channel']
             news_json['contain_image'] = row['contain_image']
 
