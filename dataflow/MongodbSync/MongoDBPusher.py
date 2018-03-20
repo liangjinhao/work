@@ -7,6 +7,7 @@ import json
 from bson import json_util
 import logging
 from logging.handlers import RotatingFileHandler
+import traceback
 
 
 # MongoDB 信息
@@ -78,7 +79,8 @@ class MongoDBPusher(threading.Thread):
                 except Exception as e:
                     r.rpush(OPLOG_QUEUE, oplog_data)
                     self.logger.error(str(r.llen(OPLOG_QUEUE)) + '    操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 '
-                                      'oplog 为: ' + str(oplog_data) + '错误为: ' + str(e))
+                                      'oplog 为: ' + str(oplog_data) + '错误为: \n' + traceback.format_exc())
+                    time.sleep(0.001)
             else:
                 self.logger.info('Redis oplog 队列中无数据，等待10s再取')
                 time.sleep(10)

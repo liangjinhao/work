@@ -9,6 +9,7 @@ import os
 from bson import json_util
 import logging
 from logging.handlers import RotatingFileHandler
+import traceback
 
 
 # MongoDB 信息
@@ -114,6 +115,7 @@ class MongoDBListener(threading.Thread):
                                 current_op_time = int(datetime.datetime.strptime(
                                     self.status['last_op'], '%Y-%m-%d %H:%M:%S').strftime('%s'))
                                 if current_oplog_time.time > current_op_time:
+                                    self.logger.error(str(current_oplog_time.time) + ',' + str(current_op_time))
                                     self.logger.error('由于 Redis 队列堆积未被消费，长时间睡眠监听程序已造成数据丢失。现在 Oplog '
                                                       '的最早时间为 '
                                                       + str(datetime.datetime.utcfromtimestamp(current_oplog_time.time))
@@ -124,7 +126,7 @@ class MongoDBListener(threading.Thread):
                                 # cr_data.hb_charts,cr_data.hb_tables,cr_data.juchao_charts,cr_data.juchao_tables 表
                                 # 的 pngFile, fileUrl 字段有 OSS 链接
 
-                                if 'pngFile' in doc['o']:
+                                if 'pngFile' in doc['o'] and doc['o']['pngFile'] is not None:
                                     pngFile_oss = doc['o']['pngFile']
                                     doc['o']['pngFile'] = doc['o']['pngFile'].replace('oss-cn-hangzhou',
                                                                                       'oss-cn-hongkong')
@@ -141,28 +143,28 @@ class MongoDBListener(threading.Thread):
                             elif table_name in ['cr_data.hb_text', 'cr_data.juchao_text']:
                                 # cr_data.hb_text, 'cr_data.juchao_text 表
                                 # 的 fileUrl, html_file, text_file, paragraph_file 字段有 OSS 链接
-                                if 'fileUrl' in doc['o']:
+                                if 'fileUrl' in doc['o'] and doc['o']['fileUrl'] is not None:
                                     fileUrl_oss = doc['o']['fileUrl']
                                     doc['o']['fileUrl'] = doc['o']['fileUrl'].replace('oss-cn-hangzhou',
                                                                                       'oss-cn-hongkong')
                                     r.rpush(OSS_QUEUE, fileUrl_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + fileUrl_oss)
 
-                                if 'html_file' in doc['o']:
+                                if 'html_file' in doc['o'] and doc['o']['html_file'] is not None:
                                     html_file_oss = doc['o']['html_file']
                                     doc['o']['html_file'] = doc['o']['html_file'].replace('oss-cn-hangzhou',
                                                                                           'oss-cn-hongkong')
                                     r.rpush(OSS_QUEUE, html_file_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + html_file_oss)
 
-                                if 'text_file' in doc['o']:
+                                if 'text_file' in doc['o'] and doc['o']['text_file'] is not None:
                                     text_file_oss = doc['o']['text_file']
                                     doc['o']['text_file'] = doc['o']['text_file'].replace('oss-cn-hangzhou',
                                                                                           'oss-cn-hongkong')
                                     r.rpush(OSS_QUEUE, text_file_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + text_file_oss)
 
-                                if 'paragraph_file' in doc['o']:
+                                if 'paragraph_file' in doc['o'] and doc['o']['paragraph_file'] is not None:
                                     paragraph_file_oss = doc['o']['paragraph_file']
                                     doc['o']['paragraph_file'] = doc['o']['paragraph_file'].replace('oss-cn-hangzhou',
                                                                                                     'oss-cn-hongkong')
@@ -198,6 +200,6 @@ class MongoDBListener(threading.Thread):
                 self.status['new_op'] = str(datetime.datetime.utcfromtimestamp(
                     self.client.local.oplog.rs.find().sort('$natural', pymongo.DESCENDING)
                         .limit(-1).next()['ts'].time))
-                self.status['exception'] = str(e)
+                self.status['exception'] = traceback.format_exc()
                 open('./listener_status', 'w').write(json.dumps(self.status))
                 self.logger.exception(e)
