@@ -111,24 +111,24 @@ def send(x):
             })
 
             news_json['id'] = row['rowKey']
-            news_json['author'] = row['author']
+            news_json['author'] = row['author'] if 'author' in row else ''
 
             news_json['author'] = Utils.author_norm(row['author']) \
                 if row['author'] is not None else row['author']
             news_json['category'] = row['category'] if 'category' in row else '其他'
-            news_json['channel'] = row['channel']
-            news_json['contain_image'] = row['contain_image']
+            news_json['channel'] = row['channel'] if 'channel' in row else ''
+            news_json['contain_image'] = row['contain_image'] if 'contain_image' in row else False
 
             news_json['content'] = Utils.content_norm(row['content']) \
                 if row['content'] is not None else row['content']
 
-            news_json['crawl_time'] = row['crawl_time']
-            news_json['brief'] = row['dese']
-            news_json['source_url'] = row['laiyuan']
-            news_json['source_name'] = row['source']
-            news_json['title'] = row['title']
-            news_json['url'] = row['url']
-            news_json['tags'] = row['tag']
+            news_json['crawl_time'] = row['crawl_time'] if 'crawl_time' in row else ''
+            news_json['brief'] = row['dese'] if 'dese' in row else ''
+            news_json['source_url'] = row['laiyuan'] if 'laiyuan' in row else ''
+            news_json['source_name'] = row['source'] if 'source' in row else ''
+            news_json['title'] = row['title'] if 'title' in row else ''
+            news_json['url'] = row['url'] if 'url' in row else ''
+            news_json['tags'] = row['tag'] if 'tag' in row else ''
 
             try:
                 news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
