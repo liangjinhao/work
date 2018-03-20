@@ -68,21 +68,22 @@ class MongoDBListener(threading.Thread):
         else:
             self.start_ts = oplog_time
 
+        # 监听的表
+        self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
+                       'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
+
+        last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}).sort('$natural', pymongo.DESCENDING)\
+            .limit(-1).next()
         # 记录监听状态
         self.status = {
             'start_time': str(datetime.datetime.utcfromtimestamp(self.start_ts.time)),  # 本次监听开始时间
             'time': str(datetime.datetime.now()).split('.')[0],  # 本次监听最近一次同步操作的执行时间
             'last_op': '',  # 本次监听最近一次同步的操作的时间
-            'new_op': str(datetime.datetime.utcfromtimestamp(
-                self.client.local.oplog.rs.find().sort('$natural', pymongo.DESCENDING)\
-                .limit(-1).next()['ts'].time)),  # MongoDB 待同步端最新操作的时间
+            'new_op': str(last_log['ns']) + ': ' + str(datetime.datetime.utcfromtimestamp(last_log['ts'].time)),  # MongoDB 待同步端最新操作的表和时间
             'number': 0,  # 本次监听监听到的操作总数
             'table_info': {},  # 每个 MongoSB 表更新日期, 累计更新次数等信息
             'exception': ''  # 异常信息
         }
-
-        self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
-                       'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
 
         self.logger.info('监听起始时间： ' + str(datetime.datetime.utcfromtimestamp(self.start_ts.time)))
 
@@ -186,9 +187,10 @@ class MongoDBListener(threading.Thread):
                             }
 
                         if time.time() - write_ts > write_interval:
-                            self.status['new_op'] = str(datetime.datetime.utcfromtimestamp(
-                                self.client.local.oplog.rs.find().sort('$natural', pymongo.DESCENDING)
-                                    .limit(-1).next()['ts'].time))
+                            last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}})\
+                                .sort('$natural', pymongo.DESCENDING).limit(-1).next()
+                            self.status['new_op'] = str(last_log['ns']) + ': ' + \
+                                str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
                             write_ts = time.time()
                             open('./listener_status', 'w').write(json.dumps(self.status))
 
@@ -197,9 +199,10 @@ class MongoDBListener(threading.Thread):
                     time.sleep(1)
 
             except Exception as e:
-                self.status['new_op'] = str(datetime.datetime.utcfromtimestamp(
-                    self.client.local.oplog.rs.find().sort('$natural', pymongo.DESCENDING)
-                        .limit(-1).next()['ts'].time))
+                last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}) \
+                    .sort('$natural', pymongo.DESCENDING).limit(-1).next()
+                self.status['new_op'] = str(last_log['ns']) + ': ' + \
+                    str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
                 self.status['exception'] = traceback.format_exc()
                 open('./listener_status', 'w').write(json.dumps(self.status))
                 self.logger.exception(e)
