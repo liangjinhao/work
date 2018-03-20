@@ -26,7 +26,10 @@ THRIFT_IP = '10.27.71.108'
 THRIFT_PORT = 9099
 HBASE_TABLE_NAME = b'news_data'
 
-POST_URL = 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+# News Test
+# POST_URL = 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+# News Product
+POST_URL = 'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
 
 
 def get_hbase_row(rowkey):
