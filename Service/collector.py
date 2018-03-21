@@ -185,7 +185,6 @@ class Collector:
 
         # 处理时间
         final_result['years'] = self.te.extract_regex(sentence)
-        print(final_result)
         return final_result
 
 

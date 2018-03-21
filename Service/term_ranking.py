@@ -142,7 +142,10 @@ class TermRank:
             row.extend(i[1:])
             features.append(row)
         test_data = np.array(features)
-        dtest = xgb.DMatrix(test_data)
+        try:
+            dtest = xgb.DMatrix(test_data)
+        except Exception as e:
+            raise e
         ypred = self.bst.predict(dtest)
         result = []
         for i in range(len(ypred)):

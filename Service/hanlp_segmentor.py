@@ -4,6 +4,7 @@ import re
 from collections import Counter
 import threading
 import time
+import logging
 
 CONFIG_FILE = "path.conf"
 
@@ -33,7 +34,8 @@ class HanlpSegmentor(metaclass=Singleton):
         """
         启动JVM生产Hanlp实例
         """
-        print(time.strftime('%Y-%m-%d %H:%M:%S'), 'Hanlp 开始启动')
+        start_ts = time.time()
+        logging.info('Hanlp 开始启动')
 
         conf = configparser.ConfigParser()
         conf.read(CONFIG_FILE)
@@ -45,7 +47,7 @@ class HanlpSegmentor(metaclass=Singleton):
         self.NLPTokenizer.SEGMENT.enableIndexMode(False)  # 把Index模式关闭
         self.CustomDictionry = JClass('com.hankcs.hanlp.dictionary.CustomDictionary')
 
-        print(time.strftime('%Y-%m-%d %H:%M:%S'), 'Hanlp 启动完成')
+        logging.info('Hanlp 启动完成 ' + str((time.time() - start_ts)) + "s")
 
     def reload_custom_dictionry(self):
         """
@@ -53,6 +55,7 @@ class HanlpSegmentor(metaclass=Singleton):
         :return:
         """
         self.CustomDictionry.reload()
+        logging.info('完成 Reload Hanlp 自定义词典')
 
     def get_segments(self, sentence):
         """

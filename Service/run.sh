@@ -9,6 +9,8 @@ if [ "$1" = "stop" ]; then
 else
     if [ -f "/usr/bin/python3" ]; then
         nohup /usr/bin/python3 service.py --port=1999 --log_file_prefix=tornado_1999.log "$@" > nohup.log 2>&1 &
+    elif [ -f "/usr/local/bin/python3" ]; then
+        nohup /usr/local/bin/python3 service.py --port=1999 --log_file_prefix=tornado_1999.log "$@" > nohup.log 2>&1 &
     else
         nohup python3 service.py --port=1999 --log_file_prefix=tornado_1999.log "$@" > nohup.log 2>&1 &
     fi

@@ -9,7 +9,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import collector
 import update_dic
-import hanlp_segmentor
+import logging
+import traceback
 
 tornado.options.define('port', default=8888, help='run on this port', type=int)
 tornado.options.define("log_file_prefix", default='tornado_8888.log')
@@ -19,35 +20,36 @@ tornado.options.parse_command_line()
 class MainHandler(tornado.web.RequestHandler):
 
     def get(self):
-        start = time.time()
-        query_text = self.get_argument('text')
-        res = json.loads(query_text)
+        try:
+            query_text = self.get_argument('text')
+            texts = json.loads(query_text)
 
-        # 打印信息
-        length = len(res)
-        print(time.strftime('%Y-%m-%d %H:%M:%S'), '==========>')
-        print("[INFO]开始处理本次请求，有" + str(length) + "条句子")
-
-        # 处理句子
-        texts = res
-        final_result = []
-        for i in range(len(texts)):
-            # 清洗数据
-            text = texts[i]
-            if 0 < len(text) < 120:  # image_title长度一般不超过120
-                lock.acquire()
-                final_dict = collector_service.collect(text)
-                lock.release()
-                final_result.append(final_dict)
-            else:
-                continue
-        final_json = json.dumps(final_result, ensure_ascii=False)
-        self.set_header("Access-Control-Allow-Origin", "*")
-        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
-        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.write(final_json)
-
-        print("[INFO]本次耗时" + str((time.time() - start)*1000) + "ms")
+            # 处理句子
+            logging.info('====> 开始处理本次请求: ' + str(texts))
+            final_result = []
+            for i in range(len(texts)):
+                # 清洗数据
+                text = texts[i]
+                if 0 < len(text) < 120:  # image_title长度一般不超过120
+                    lock.acquire()
+                    try:
+                        final_dict = collector_service.collect(text)
+                        final_result.append(final_dict)
+                        logging.info(str(final_dict))
+                    except Exception:
+                        logging.error(traceback.format_exc())
+                    lock.release()
+                else:
+                    continue
+            final_json = json.dumps(final_result, ensure_ascii=False)
+            self.set_header("Access-Control-Allow-Origin", "*")
+            self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+            self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+            self.write(final_json)
+        except Exception:
+            logging.error(traceback.format_exc())
+            lock.release()
+            print(traceback.format_exc())
 
         return
 
@@ -79,16 +81,17 @@ class MyHandler(FileSystemEventHandler):
     def on_modified(self, event):
         # /dict/phrase 被修改，重新加载词典
         if event.key[0] == 'modified' and 'phrase' in event.key[1].split(r'/')[-1] and event.key[2] is False:
-            print(time.strftime('%Y-%m-%d %H:%M:%S'), "开始重新加载自定义不可切分词典")
+            logging.info('开始重新加载自定义不可切分词典')
             lock.acquire()
             collector_service.reload_dict()
             lock.release()
-            print(time.strftime('%Y-%m-%d %H:%M:%S'), "完成加载自定义不可切分词典")
+            logging.info('完成加载自定义不可切分词典')
+        # Waring! 发现重载自定义词典会报错
         # /hanlp.properties 被修改，重新加载Hanlp分词词典
-        if event.key[0] == 'modified' and 'hanlp' in event.key[1] and event.key[2] is False:
-            print(time.strftime('%Y-%m-%d %H:%M:%S'), "开始重新加载 Hanlp 自定义词典")
-            hanlp_segmentor.HanlpSegmentor().reload_custom_dictionry()
-            print(time.strftime('%Y-%m-%d %H:%M:%S'), "完成加载 Hanlp 自定义词典")
+        # if event.key[0] == 'modified' and 'hanlp' in event.key[1] and event.key[2] is False:
+        #     logging.info('开始重新加载 Hanlp 自定义词典')
+        #     collector_service.segmentor.reload_custom_dictionry()
+        #     logging.info('完成加载 Hanlp 自定义词典')
 
 
 if __name__ == "__main__":
@@ -111,5 +114,5 @@ if __name__ == "__main__":
 
     application = tornado.web.Application([(r"/", MainHandler), ], **settings)
     application.listen(options.port)
-    print(time.strftime('%Y-%m-%d %H:%M:%S'), "CRF SERVICE 已经开启！")
+    logging.info('CRF SERVICE 已经开启！')
     tornado.ioloop.IOLoop.instance().start()
