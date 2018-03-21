@@ -190,18 +190,11 @@ class MongoDBListener(threading.Thread):
                                 'count': 1 if table_name not in self.status['table_info']
                                 else self.status['table_info'][table_name]['count'] + 1
                             }
-
                         if time.time() - write_ts > write_interval:
                             last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}})\
                                 .sort('$natural', pymongo.DESCENDING).next()
                             self.status['oplog_new'] = str(last_log['ns']) + ': ' + \
                                 str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
-
-                            for table in self.tables:
-                                self.status['table_info'][table]['t_oplog_new'] = \
-                                    str(datetime.datetime.utcfromtimestamp(
-                                        self.client.local.oplog.rs.find({'ns': "'" + table + "'"})
-                                            .sort('$natural', pymongo.DESCENDING).next()['ts'].time))
 
                             write_ts = time.time()
                             open('./listener_status', 'w').write(json.dumps(self.status))
@@ -215,12 +208,6 @@ class MongoDBListener(threading.Thread):
                     .sort('$natural', pymongo.DESCENDING).next()
                 self.status['oplog_new'] = str(last_log['ns']) + ': ' + \
                     str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
-
-                for table in self.tables:
-                    self.status['table_info'][table]['t_oplog_new'] = \
-                        str(datetime.datetime.utcfromtimestamp(
-                            self.client.local.oplog.rs.find({'ns': "'" + table + "'"})
-                                .sort('$natural', pymongo.DESCENDING).next()['ts'].time))
 
                 self.status['exception'] = traceback.format_exc()
                 open('./listener_status', 'w').write(json.dumps(self.status))
