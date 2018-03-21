@@ -59,12 +59,12 @@ class MongoDBListener(threading.Thread):
         if os.path.exists('./listener_status'):
             status_time = json.loads(open('./listener_status').readline().strip())['sync_time']
             status_time_s = int(datetime.datetime.strptime(status_time, '%Y-%m-%d %H:%M:%S').strftime('%s'))
-
+            self.logger.warning('status_time: ' + str(status_time_s) + ' oplog_time: ' + str(oplog_time.time))
             if oplog_time.time < status_time_s:
                 self.start_ts = bson.timestamp.Timestamp(status_time, 1024)
             else:
-                self.logger.warning('listener_status记载的时间 ' + status_time + '比oplog中最早的时间'
-                                    + str(datetime.datetime.utcfromtimestamp(oplog_time.time)) + '早')
+                self.logger.warning('listener_status记载的时间 ' + status_time + ' 比oplog中最早的时间'
+                                    + str(datetime.datetime.utcfromtimestamp(oplog_time.time)) + ' 早')
                 self.start_ts = oplog_time
         else:
             self.start_ts = oplog_time
@@ -195,7 +195,7 @@ class MongoDBListener(threading.Thread):
                             for table in self.tables:
                                 self.status['table_info'][table]['t_oplog_new'] = \
                                     str(datetime.datetime.utcfromtimestamp(
-                                        self.client.local.oplog.rs.find({'ns': table})
+                                        self.client.local.oplog.rs.find({'ns': "'" + table + "'"})
                                             .sort('$natural', pymongo.DESCENDING).limit(-1).next()))
 
                             write_ts = time.time()
@@ -214,7 +214,7 @@ class MongoDBListener(threading.Thread):
                 for table in self.tables:
                     self.status['table_info'][table]['t_oplog_new'] = \
                         str(datetime.datetime.utcfromtimestamp(
-                            self.client.local.oplog.rs.find({'ns': table})
+                            self.client.local.oplog.rs.find({'ns': "'" + table + "'"})
                                 .sort('$natural', pymongo.DESCENDING).limit(-1).next()))
 
                 self.status['exception'] = traceback.format_exc()
