@@ -48,7 +48,7 @@ class MongoDBListener(threading.Thread):
 
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
-        self.logger.setLevel(logging.INFO)
+        # self.logger.setLevel(logging.INFO)
 
         self.client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, unicode_decode_error_handler='ignore')
         admin = self.client['admin']

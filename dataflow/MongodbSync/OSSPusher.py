@@ -29,9 +29,10 @@ class OSSPusher(threading.Thread):
         handle = RotatingFileHandler('./oss_pusher.log', maxBytes=50 * 1024 * 1024, backupCount=3)
         handle.setFormatter(logging.Formatter(
             '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
-        handle.setLevel(logging.INFO)
+
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
+        # self.logger.setLevel(logging.INFO)
 
         self.bucket_hz = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HZ, BUCKET_HZ)
         self.bucket_hk = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HK, BUCKET_HK)
