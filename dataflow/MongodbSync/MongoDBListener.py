@@ -58,7 +58,12 @@ class MongoDBListener(threading.Thread):
         oplog_time = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts']
         if os.path.exists('./listener_status'):
             status_time = json.loads(open('./listener_status').readline().strip())['sync_time']
-            status_time_s = int(datetime.datetime.strptime(status_time, '%Y-%m-%d %H:%M:%S').strftime('%s'))
+
+            utc_offset_timedelta = datetime.datetime.utcnow() - datetime.datetime.now()
+            local_datetime = datetime.datetime.strptime(status_time, "%Y-%m-%d %H:%M:%S")
+            result_utc_datetime = local_datetime + utc_offset_timedelta
+            status_time_s = int(result_utc_datetime.timestamp())
+
             self.logger.warning('status_time: ' + str(status_time_s) + ' oplog_time: ' + str(oplog_time.time))
             if oplog_time.time < status_time_s:
                 self.start_ts = bson.timestamp.Timestamp(status_time, 1024)
