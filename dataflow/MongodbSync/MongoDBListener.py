@@ -66,7 +66,7 @@ class MongoDBListener(threading.Thread):
 
             self.logger.warning('status_time: ' + str(status_time_s) + ' oplog_time: ' + str(oplog_time.time))
             if oplog_time.time < status_time_s:
-                self.start_ts = bson.timestamp.Timestamp(status_time, 1024)
+                self.start_ts = bson.timestamp.Timestamp(status_time_s, 1024)
             else:
                 self.logger.warning('listener_status记载的时间 ' + status_time + ' 比oplog中最早的时间'
                                     + str(datetime.datetime.utcfromtimestamp(oplog_time.time)) + ' 早')
