@@ -55,7 +55,7 @@ class MongoDBListener(threading.Thread):
         admin.authenticate(USER, PASSWORD)
 
         # 确定监听的开始时间，如果有日志世界则用日志时间接着监听
-        oplog_time = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts']
+        oplog_time = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).next()['ts']
         if os.path.exists('./listener_status'):
             status_time = json.loads(open('./listener_status').readline().strip())['sync_time']
 
@@ -79,7 +79,7 @@ class MongoDBListener(threading.Thread):
                        'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
 
         last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}).sort('$natural', pymongo.DESCENDING)\
-            .limit(-1).next()
+            .next()
         # 记录监听状态
         self.status = {
             'start_time': str(datetime.datetime.utcfromtimestamp(self.start_ts.time)),  # 本次监听开始时间
@@ -118,7 +118,7 @@ class MongoDBListener(threading.Thread):
                                                     'OPLOG: ' + str(oplog_siez) + ' OSS: ' + str(oss_size))
                                 time.sleep(5*60)
                                 current_oplog_time = self.client.local.oplog.rs.find()\
-                                    .sort('$natural', pymongo.ASCENDING).limit(-1).next()['ts'].time
+                                    .sort('$natural', pymongo.ASCENDING).next()['ts'].time
                                 current_op_time = doc['ts'].time
                                 if current_oplog_time > current_op_time:
                                     self.logger.error('由于 Redis 队列堆积未被消费，长时间睡眠监听程序已造成数据丢失。现在 Oplog '
@@ -193,7 +193,7 @@ class MongoDBListener(threading.Thread):
 
                         if time.time() - write_ts > write_interval:
                             last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}})\
-                                .sort('$natural', pymongo.DESCENDING).limit(-1).next()
+                                .sort('$natural', pymongo.DESCENDING).next()
                             self.status['oplog_new'] = str(last_log['ns']) + ': ' + \
                                 str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
 
@@ -201,7 +201,7 @@ class MongoDBListener(threading.Thread):
                                 self.status['table_info'][table]['t_oplog_new'] = \
                                     str(datetime.datetime.utcfromtimestamp(
                                         self.client.local.oplog.rs.find({'ns': "'" + table + "'"})
-                                            .sort('$natural', pymongo.DESCENDING).limit(-1).next()))
+                                            .sort('$natural', pymongo.DESCENDING).next()['ts'].time))
 
                             write_ts = time.time()
                             open('./listener_status', 'w').write(json.dumps(self.status))
@@ -212,7 +212,7 @@ class MongoDBListener(threading.Thread):
 
             except Exception as e:
                 last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}) \
-                    .sort('$natural', pymongo.DESCENDING).limit(-1).next()
+                    .sort('$natural', pymongo.DESCENDING).next()
                 self.status['oplog_new'] = str(last_log['ns']) + ': ' + \
                     str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
 
@@ -220,7 +220,7 @@ class MongoDBListener(threading.Thread):
                     self.status['table_info'][table]['t_oplog_new'] = \
                         str(datetime.datetime.utcfromtimestamp(
                             self.client.local.oplog.rs.find({'ns': "'" + table + "'"})
-                                .sort('$natural', pymongo.DESCENDING).limit(-1).next()))
+                                .sort('$natural', pymongo.DESCENDING).next()['ts'].time))
 
                 self.status['exception'] = traceback.format_exc()
                 open('./listener_status', 'w').write(json.dumps(self.status))
