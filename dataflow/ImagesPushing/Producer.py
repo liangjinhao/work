@@ -4,6 +4,7 @@ import redis
 import threading
 import logging
 from logging.handlers import RotatingFileHandler
+import traceback
 
 
 # 记载 Producer 线程情况的 logger
@@ -55,22 +56,24 @@ class ScrawlImagesProducer(threading.Thread):
 
         while True:
             message = r.lpop(name=self.redis_queue_name)
-            if not message:
-                logger_producer.info("Redis 队列中无数据，等待5s再取")
-                connection.close()
-                time.sleep(5)
-                continue
-            message = str(message, encoding='utf-8') if isinstance(message, bytes) else message
-            result = channel.basic_publish(exchange='',
-                                           routing_key=self.queue_name,
-                                           body=message,
-                                           properties=pika.BasicProperties(
-                                               delivery_mode=2,  # make message persistent
-                                           ))
-            if result:
-                logger_producer.info(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 成功： " + message)
-            else:
-                logger_producer.error(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 失败： " + message)
-                r.rpush(self.redis_queue_name, message)
 
-        # connection.close()
+            if message:
+                try:
+                    message = str(message, encoding='utf-8') if isinstance(message, bytes) else message
+                    result = channel.basic_publish(exchange='',
+                                                   routing_key=self.queue_name,
+                                                   body=message,
+                                                   properties=pika.BasicProperties(
+                                                       delivery_mode=2,  # make message persistent
+                                                   ))
+                    if result:
+                        logger_producer.info(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 成功： " + message)
+                    else:
+                        logger_producer.error(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 失败： " + message)
+                        r.rpush(self.redis_queue_name, message)
+                except Exception:
+                    logger_producer.error(traceback.format_exc())
+
+            else:
+                logger_producer.info("Redis 队列中无数据，等待5s再取")
+                time.sleep(5)
