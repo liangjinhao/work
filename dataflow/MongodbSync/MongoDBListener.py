@@ -45,10 +45,10 @@ class MongoDBListener(threading.Thread):
         handle = RotatingFileHandler('./listener.log', maxBytes=50 * 1024 * 1024, backupCount=3)
         handle.setFormatter(logging.Formatter(
             '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
-        handle.setLevel(logging.INFO)
 
         self.logger = logging.getLogger(__name__)
         self.logger.addHandler(handle)
+        self.logger.setLevel(logging.INFO)
 
         self.client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, unicode_decode_error_handler='ignore')
         admin = self.client['admin']
