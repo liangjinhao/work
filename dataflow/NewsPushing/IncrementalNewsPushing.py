@@ -10,6 +10,7 @@ from hbase import Hbase
 from hbase.Hbase import *
 from logging.handlers import RotatingFileHandler
 import traceback
+from multiprocessing.dummy import Pool as ThreadPool
 
 
 """
@@ -26,10 +27,11 @@ THRIFT_IP = '10.27.71.108'
 THRIFT_PORT = 9099
 HBASE_TABLE_NAME = b'news_data'
 
-# News Test
-# POST_URL = 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
-# News Product
-POST_URL = 'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+# News Test: http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news
+# News Product: http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news
+
+POST_URLS = ['http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
+             'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
 
 
 def get_hbase_row(rowkey):
@@ -58,9 +60,10 @@ def get_hbase_row(rowkey):
         return {}
 
 
-def post(rowkey, news_json, write_back_redis=True):
+def post(url, rowkey, news_json, write_back_redis=True):
     """
     将单条数据 post 到 Solr 服务上
+    :param url:
     :param rowkey:
     :param news_json:
     :param write_back_redis: 是否将 post 失败的数据再重新写回到 Redis
@@ -68,7 +71,7 @@ def post(rowkey, news_json, write_back_redis=True):
     """
     redis_client = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
     try:
-        response = requests.post(POST_URL, json=[news_json])
+        response = requests.post(url, json=[news_json])
         if response.status_code != 200 and write_back_redis:
             logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 返回响应代码 " +
                          str(response.status_code) + "，数据 rowKey:" + rowkey
@@ -146,7 +149,8 @@ def send(x):
                     news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
                     news_json['time'] = 0
 
-            executor.submit(post, row['rowKey'], news_json)
+            for url in POST_URLS:
+                executor.submit(post, url, row['rowKey'], news_json)
 
 
 if __name__ == '__main__':
@@ -170,10 +174,8 @@ if __name__ == '__main__':
     logger_time_parsing.addHandler(time_parsing_handle)
     logger_time_parsing.setLevel(logging.INFO)
 
-    count = 0
-    news_list = []
+    r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
     while True:
-        r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
         rowkey = r.lpop(name=REDIS_QUEUE)
 
         if rowkey:
