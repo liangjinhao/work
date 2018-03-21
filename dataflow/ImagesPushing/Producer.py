@@ -72,6 +72,19 @@ class ScrawlImagesProducer(threading.Thread):
                         logger_producer.error(str(r.llen(self.redis_queue_name)) + "    从 Redis 推送数据到 RabbitMQ 失败： " + message)
                         r.rpush(self.redis_queue_name, message)
                 except Exception:
+                    credentials = pika.PlainCredentials(self.username, self.password)
+                    connection = pika.BlockingConnection(
+                        pika.ConnectionParameters(host=self.RabbitMQ_ip, port=self.RabbitMQ_port,
+                                                  virtual_host=self.vhost, credentials=credentials))
+                    channel = connection.channel()
+                    channel.queue_declare(
+                        queue=self.queue_name,
+                        durable=True,
+                        arguments={
+                            "x-dead-letter-exchange": "",
+                            "x-dead-letter-routing-key": self.queue_name,
+                        }
+                    )
                     logger_producer.error(traceback.format_exc())
 
             else:
