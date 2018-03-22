@@ -108,6 +108,7 @@ class MongoDBListener(threading.Thread):
                     write_ts = time.time()
                     for doc in cursor:
                         table_name = doc['ns']
+                        self.status['number'] = self.status['number'] + 1
                         if table_name in self.tables:
 
                             # 检查 Redis 数据是否堆积太多
@@ -184,7 +185,6 @@ class MongoDBListener(threading.Thread):
 
                             self.status['time'] = str(datetime.datetime.now()).split('.')[0]
                             self.status['sync_time'] = str(datetime.datetime.utcfromtimestamp(doc['ts'].time))
-                            self.status['number'] = self.status['number'] + 1
                             self.status['table_info'][table_name] = {
                                 't_sync_time': str(datetime.datetime.utcfromtimestamp(doc['ts'].time)),
                                 'count': 1 if table_name not in self.status['table_info']
