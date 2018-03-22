@@ -99,7 +99,7 @@ class MongoDBListener(threading.Thread):
             try:
                 cursor = self.client.local.oplog.rs.find({'ts': {'$gte': self.start_ts}},
                                                          cursor_type=pymongo.CursorType.TAILABLE_AWAIT,
-                                                         oplog_replay=True)
+                                                         oplog_replay=True).sort('$natural', pymongo.ASCENDING)
 
                 r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
 
