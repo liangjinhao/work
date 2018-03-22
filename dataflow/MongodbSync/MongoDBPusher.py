@@ -47,6 +47,7 @@ class MongoDBPusher(threading.Thread):
             if oplog_data:
 
                 try:
+                    oplog_data = str(oplog_data, 'utf-8') if isinstance(oplog_data, bytes) else oplog_data
                     oplog_data = json.loads(oplog_data, object_hook=json_util.object_hook)
                     action_type = oplog_data['op']
                     db = oplog_data['ns'].split(".")[0]
