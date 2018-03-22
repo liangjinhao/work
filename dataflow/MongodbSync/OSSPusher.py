@@ -42,7 +42,7 @@ class OSSPusher(threading.Thread):
 
         while True:
 
-            oss_data = r.lpop(name=OSS_QUEUE)
+            oss_data = r.spop(name=OSS_QUEUE)
 
             if oss_data:
                 oss_data = oss_data if isinstance(oss_data, str) else str(oss_data, encoding='utf-8')
@@ -58,7 +58,7 @@ class OSSPusher(threading.Thread):
                 except Exception as e:
                     self.logger.error(str(r.llen(OSS_QUEUE)) + '    转写 oss 失败，oss 为: ' + oss_new + '错误为: \n'
                                       + traceback.format_exc())
-                    r.rpush(OSS_QUEUE, oss_data)
+                    r.sadd(OSS_QUEUE, oss_data)
                     time.sleep(0.001)
             else:
                 self.logger.info('Redis oss 队列中无数据，等待10s再取')

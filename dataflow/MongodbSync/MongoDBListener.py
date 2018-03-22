@@ -28,8 +28,8 @@ OSS_QUEUE = 'oss'
 INTERVAL = 0.0015
 
 # Redis 中队列的最大长度
-MAX_OPLOG_SIZE = 500000
-MAX_OSS_SIZE = 500000
+MAX_OPLOG_SIZE = 1000000
+MAX_OSS_SIZE = 1000000
 
 
 class MongoDBListener(threading.Thread):
@@ -137,14 +137,14 @@ class MongoDBListener(threading.Thread):
                                     pngFile_oss = doc['o']['pngFile']
                                     doc['o']['pngFile'] = doc['o']['pngFile'].replace('oss-cn-hangzhou',
                                                                                       'oss-cn-hongkong')
-                                    r.rpush(OSS_QUEUE, pngFile_oss)
+                                    r.sadd(OSS_QUEUE, pngFile_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + pngFile_oss)
 
                                 if 'fileUrl' in doc['o']:
                                     fileUrl_oss = doc['o']['fileUrl']
                                     doc['o']['fileUrl'] = doc['o']['fileUrl'].replace('oss-cn-hangzhou',
                                                                                       'oss-cn-hongkong')
-                                    r.rpush(OSS_QUEUE, fileUrl_oss)
+                                    r.sadd(OSS_QUEUE, fileUrl_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + fileUrl_oss)
 
                             elif table_name in ['cr_data.hb_text', 'cr_data.juchao_text']:
@@ -154,28 +154,28 @@ class MongoDBListener(threading.Thread):
                                     fileUrl_oss = doc['o']['fileUrl']
                                     doc['o']['fileUrl'] = doc['o']['fileUrl'].replace('oss-cn-hangzhou',
                                                                                       'oss-cn-hongkong')
-                                    r.rpush(OSS_QUEUE, fileUrl_oss)
+                                    r.sadd(OSS_QUEUE, fileUrl_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + fileUrl_oss)
 
                                 if 'html_file' in doc['o'] and doc['o']['html_file'] is not None:
                                     html_file_oss = doc['o']['html_file']
                                     doc['o']['html_file'] = doc['o']['html_file'].replace('oss-cn-hangzhou',
                                                                                           'oss-cn-hongkong')
-                                    r.rpush(OSS_QUEUE, html_file_oss)
+                                    r.sadd(OSS_QUEUE, html_file_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + html_file_oss)
 
                                 if 'text_file' in doc['o'] and doc['o']['text_file'] is not None:
                                     text_file_oss = doc['o']['text_file']
                                     doc['o']['text_file'] = doc['o']['text_file'].replace('oss-cn-hangzhou',
                                                                                           'oss-cn-hongkong')
-                                    r.rpush(OSS_QUEUE, text_file_oss)
+                                    r.sadd(OSS_QUEUE, text_file_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + text_file_oss)
 
                                 if 'paragraph_file' in doc['o'] and doc['o']['paragraph_file'] is not None:
                                     paragraph_file_oss = doc['o']['paragraph_file']
                                     doc['o']['paragraph_file'] = doc['o']['paragraph_file'].replace('oss-cn-hangzhou',
                                                                                                     'oss-cn-hongkong')
-                                    r.rpush(OSS_QUEUE, paragraph_file_oss)
+                                    r.sadd(OSS_QUEUE, paragraph_file_oss)
                                     self.logger.info(str(r.llen(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
                             r.rpush(OPLOG_QUEUE, json.dumps(doc, default=json_util.default))
