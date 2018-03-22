@@ -54,9 +54,9 @@ class OSSPusher(threading.Thread):
                         file_stream = self.bucket_hz.get_object(file_name)
                         # print('开始上传', oss_new)
                         self.bucket_hk.put_object(file_name, file_stream)
-                        self.logger.info(str(r.llen(OSS_QUEUE)) + '    转写 oss 成功，oss 为: ' + oss_new)
+                        self.logger.info(str(r.scard(OSS_QUEUE)) + '    转写 oss 成功，oss 为: ' + oss_new)
                 except Exception as e:
-                    self.logger.error(str(r.llen(OSS_QUEUE)) + '    转写 oss 失败，oss 为: ' + oss_new + '错误为: \n'
+                    self.logger.error(str(r.scard(OSS_QUEUE)) + '    转写 oss 失败，oss 为: ' + oss_new + '错误为: \n'
                                       + traceback.format_exc())
                     r.sadd(OSS_QUEUE, oss_data)
                     time.sleep(0.001)
