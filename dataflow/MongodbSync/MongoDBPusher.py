@@ -62,10 +62,7 @@ class MongoDBPusher(threading.Thread):
                             collection.insert_one(oplog_data['o'])
                             self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + str(_id))
                         except DuplicateKeyError:
-                            oplog_data['op'] = 'd'
-                            collection.delete_one({'_id': oplog_data['o']['_id']})
-                            oplog_data['op'] = 'i'
-                            collection.insert_one(oplog_data['o'])
+                            collection.replace_one({'_id': oplog_data['o']['_id']}, oplog_data['o'], True)
                             self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + str(_id))
                     elif action_type == 'u':
                         try:
