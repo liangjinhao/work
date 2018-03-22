@@ -4,7 +4,7 @@ import OSSPusher
 
 if __name__ == '__main__':
 
-    for i in range(40):
+    for i in range(20):
         MongoDBPusher.MongoDBPusher().start()
         print('MongoDB 推送线程 %s 开启', i)
 
