@@ -9,6 +9,5 @@ if __name__ == '__main__':
         print('MongoDB 推送线程 %s 开启', i)
 
     for i in range(20):
-        oss_pusher1 = OSSPusher.OSSPusher()
-        oss_pusher1.start()
+        OSSPusher.OSSPusher().start()
         print('OSS 推送线程 %s 开启', i)
