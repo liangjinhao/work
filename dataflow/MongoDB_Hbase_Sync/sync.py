@@ -395,7 +395,7 @@ if __name__ == '__main__':
 
     MongodbIncrementalSync().start()
 
-    for i in range(50):
+    for i in range(500):
         HbaseSync().start()
 
     QUEUE.join()
