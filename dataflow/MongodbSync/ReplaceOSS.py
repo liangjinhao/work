@@ -13,7 +13,7 @@ PASSWORD = '9c9df8aebf04'
 
 class ReplaceOSS(threading.Thread):
 
-    def __init__(self):
+    def __init__(self, table):
         super(ReplaceOSS, self).__init__()
 
         # 记载 MongoDBListener 线程情况的 logger
@@ -25,9 +25,12 @@ class ReplaceOSS(threading.Thread):
         self.logger.addHandler(handle)
         # logger.setLevel(logging.INFO)
 
-    def run(self, table):
+        self.table = table
+
+    def run(self):
 
         count = 0
+        table = self.table
         client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, unicode_decode_error_handler='ignore')
         db = client['cr_data']
         db.authenticate(USER, PASSWORD)
@@ -76,6 +79,6 @@ class ReplaceOSS(threading.Thread):
 if __name__ == '__main__':
     tables = ['hb_charts', 'hb_tables', 'hb_text',
               'juchao_charts', 'juchao_tables', 'juchao_text']
-    for table in tables:
-        ReplaceOSS().start()
+    for table_name in tables:
+        ReplaceOSS(table_name).start()
 
