@@ -34,9 +34,11 @@ THRIFT_PORT = 9099
 column_family = 'data'
 
 
-class MongoDBHbaseSync:
+class MongoDBHbaseSync(threading.Thread):
 
     def __init__(self):
+        super(MongoDBHbaseSync, self).__init__()
+
         # 监听的表
         self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
                        'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
@@ -106,9 +108,11 @@ class MongoDBHbaseSync:
         pool.map(self.push, self.tables)
 
 
-class MongodbFullSync:
+class MongodbFullSync(threading.Thread):
 
     def __init__(self):
+
+        super(MongodbFullSync, self).__init__()
 
         # 监听的表
         self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
@@ -159,9 +163,11 @@ class MongodbFullSync:
         pool.map(self.push_queue, self.tables)
 
 
-class MongodbIncrementalSync:
+class MongodbIncrementalSync(threading.Thread):
 
     def __init__(self):
+
+        super(MongodbIncrementalSync, self).__init__()
 
         # 记载 MongoDBListener 线程情况的 logger
         handle = RotatingFileHandler('./mongodb_incremental_sync.log', maxBytes=50 * 1024 * 1024, backupCount=3)
@@ -383,12 +389,12 @@ class HbaseSync(threading.Thread):
 
 if __name__ == '__main__':
 
-    MongoDBHbaseSync().run()
+    MongoDBHbaseSync().start()
 
     # if FULL_SYNC:
-    #     MongodbFullSync().run()
+    #     MongodbFullSync().start()
 
-    MongodbIncrementalSync().run()
+    MongodbIncrementalSync().start()
 
     for i in range(5):
         HbaseSync().start()
