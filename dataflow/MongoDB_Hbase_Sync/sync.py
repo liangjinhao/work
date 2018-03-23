@@ -83,7 +83,7 @@ class MongoDBHbaseSync(threading.Thread):
             for item in record:
                 if item == '_id':
                     continue
-                key = bytes('info:' + item, encoding="utf8")
+                key = bytes('data:' + item, encoding="utf8")
                 var = bytes(str(record[item]), encoding="utf8")
                 # hbase.client.keyvalue.maxsize 默认是10M，超出这个值则设置为None
                 if len(var) < 10 * 1024 * 1024:
