@@ -178,7 +178,7 @@ class MongoDBListener(threading.Thread):
                                     r.sadd(OSS_QUEUE, paragraph_file_oss)
                                     self.logger.info(str(r.scard(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
-                            r.rpush(OPLOG_QUEUE, json.dumps(doc, default=json_util.default))
+                            r.rpush(OPLOG_QUEUE, json_util.dumps(doc, default=json_util.default))
                             _id = str(doc['o']['_id'] if '_id' in doc['o'] else doc['o2']['_id'])
                             self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Push to Redis oplog queue: '
                                              + _id + ' ' + doc['op'])

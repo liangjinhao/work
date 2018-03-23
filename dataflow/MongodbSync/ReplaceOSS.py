@@ -14,7 +14,7 @@ PASSWORD = '9c9df8aebf04'
 class ReplaceOSS(threading.Thread):
 
     def __init__(self):
-        super(ReplaceOSS).__init__()
+        super(ReplaceOSS, self).__init__()
 
         # 记载 MongoDBListener 线程情况的 logger
         handle = RotatingFileHandler('./replace_oss.log', maxBytes=50 * 1024 * 1024, backupCount=3)
