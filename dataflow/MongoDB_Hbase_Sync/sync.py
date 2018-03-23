@@ -91,7 +91,7 @@ class MongoDBHbaseSync(threading.Thread):
                 else:
                     mutations.append(Hbase.Mutation(column=key, value=bytes(str(None), encoding="utf8")))
 
-                thrift_client.mutateRow(bytes(table_name, encoding="utf8"), row_key, mutations, {})
+            thrift_client.mutateRow(bytes(table_name, encoding="utf8"), row_key, mutations, {})
 
             if count % 100000 == 0:
                 if 'create_time' in record:
@@ -143,7 +143,7 @@ class MongodbFullSync(threading.Thread):
             if count % 100000 == 0:
                 if 'create_time' in record:
                     logger.info(table + ' 已经读出 ' + str(count / 10000) + ' 万条数据'
-                                     + '    ' + str(record['create_time']))
+                                + '    ' + str(record['create_time']))
                 else:
                     logger.info(table + ' 已经读出 ' + str(count / 10000) + ' 万条数据')
             new_record = dict()
@@ -389,10 +389,10 @@ class HbaseSync(threading.Thread):
 
 if __name__ == '__main__':
 
-    MongoDBHbaseSync().start()
+    # MongoDBHbaseSync().start()
 
-    # if FULL_SYNC:
-    #     MongodbFullSync().start()
+    if FULL_SYNC:
+        MongodbFullSync().start()
 
     MongodbIncrementalSync().start()
 
