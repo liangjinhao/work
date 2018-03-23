@@ -34,7 +34,7 @@ class ReplaceOSS(threading.Thread):
         collection = db[table]
 
         cursor = collection.find().sort('$natural', pymongo.ASCENDING)
-        self.logger.warning('开始替换' + 'table')
+        self.logger.warning('开始替换' + table)
         for record in cursor:
             count += 1
             if count % 100000 == 0:
@@ -69,7 +69,7 @@ class ReplaceOSS(threading.Thread):
                     collection.update_one({'_id': record['_id']}, {'$set': {'paragraph_file': new_paragraph_file_oss}})
                     self.logger.info(table + ' 替换OSS: ' + record['_id'])
 
-        self.logger.warning('table' + '已经替换玩所有的OSS')
+        self.logger.warning(table + ' 已经替换玩所有的OSS')
         client.close()
 
 
