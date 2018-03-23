@@ -21,7 +21,7 @@ class ReplaceOSS(threading.Thread):
         handle.setFormatter(logging.Formatter(
             '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
 
-        self.logger = logging.getLogger('ReplaceOSS')
+        self.logger = logging.getLogger(table)
         self.logger.addHandler(handle)
         # logger.setLevel(logging.INFO)
 
@@ -48,29 +48,29 @@ class ReplaceOSS(threading.Thread):
                 if 'pngFile' in record and 'oss-cn-hangzhou' in record['pngFile']:
                     new_pngFile = record['pngFile'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                     collection.update_one({'_id': record['_id']}, {'$set': {'pngFile': new_pngFile}})
-                    self.logger.info(table + ' 替换OSS: ' + record['_id'])
+                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
                 if 'fileUrl' in record and record['fileUrl'] is not None:
                     new_fileUrl_oss = record['fileUrl'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                     collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + record['_id'])
+                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
 
             elif table in ['hb_text', 'juchao_text']:
                 if 'fileUrl' in record and 'oss-cn-hangzhou' in record['fileUrl']:
                     new_fileUrl_oss = record['fileUrl'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                     collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + record['_id'])
+                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
                 if 'html_file' in record and 'oss-cn-hangzhou' in record['html_file']:
                     new_html_file_oss = record['html_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                     collection.update_one({'_id': record['_id']}, {'$set': {'html_file': new_html_file_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + record['_id'])
+                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
                 if 'text_file' in record and 'oss-cn-hangzhou' in record['text_file']:
                     new_text_file_oss = record['text_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                     collection.update_one({'_id': record['_id']}, {'$set': {'text_file': new_text_file_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + record['_id'])
+                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
                 if 'paragraph_file' in record and 'oss-cn-hangzhou' in record['paragraph_file']:
                     new_paragraph_file_oss = record['paragraph_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                     collection.update_one({'_id': record['_id']}, {'$set': {'paragraph_file': new_paragraph_file_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + record['_id'])
+                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
 
         self.logger.warning(table + ' 已经替换玩所有的OSS')
         client.close()
@@ -80,5 +80,6 @@ if __name__ == '__main__':
     tables = ['hb_charts', 'hb_tables', 'hb_text',
               'juchao_charts', 'juchao_tables', 'juchao_text']
     for table_name in tables:
-        ReplaceOSS(table_name).start()
+        t = ReplaceOSS(table_name)
+        t.start()
 
