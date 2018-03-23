@@ -25,7 +25,7 @@ class ReplaceOSS(threading.Thread):
         self.logger.addHandler(handle)
         # logger.setLevel(logging.INFO)
 
-    def replace(self, table):
+    def run(self, table):
 
         count = 0
         client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, unicode_decode_error_handler='ignore')
