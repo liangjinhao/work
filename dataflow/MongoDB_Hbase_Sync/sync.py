@@ -322,6 +322,12 @@ class HbaseSync(threading.Thread):
         self.logger.addHandler(handle)
         # self.logger.setLevel(logging.INFO)
 
+        transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
+        transport = TTransport.TBufferedTransport(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+        self.client = Hbase.Client(protocol)
+        transport.open()
+
     def write_hbase(self, data):
         """
         将数据写入 Hbase
@@ -336,12 +342,6 @@ class HbaseSync(threading.Thread):
         }
         :return:
         """
-
-        transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
-        transport = TTransport.TBufferedTransport(transport)
-        protocol = TBinaryProtocol.TBinaryProtocol(transport)
-        client = Hbase.Client(protocol)
-        transport.open()
 
         op = data['op']
         table_name = bytes(data['table_name'], "utf-8")
@@ -360,12 +360,11 @@ class HbaseSync(threading.Thread):
                     mutations.append(Hbase.Mutation(column=key, value=var))
                 else:
                     mutations.append(Hbase.Mutation(column=key, value=bytes(str(None), encoding="utf8")))
-            client.mutateRow(table_name, row_key, mutations, {})
+            self.client.mutateRow(table_name, row_key, mutations, {})
             self.logger.info(str(QUEUE.qsize()) + ' 插入到 Hbase ' + str(data))
         elif op == 'd':
-            client.deleteAllRow(table_name, row_key, {})
+            self.client.deleteAllRow(table_name, row_key, {})
             self.logger.info(str(QUEUE.qsize()) + ' 删除到 Hbase ' + str(data))
-        transport.close()
 
     def run(self):
         global QUEUE
