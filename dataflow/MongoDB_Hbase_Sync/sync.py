@@ -48,7 +48,7 @@ class MongoDBHbaseSync:
         :return:
         """
 
-        handle = RotatingFileHandler('./listener.log', maxBytes=50 * 1024 * 1024, backupCount=3)
+        handle = RotatingFileHandler('./full_sync.log', maxBytes=50 * 1024 * 1024, backupCount=3)
         handle.setFormatter(logging.Formatter(
             '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
 
@@ -94,7 +94,7 @@ class MongoDBHbaseSync:
             if count % 100000 == 0:
                 if 'create_time' in record:
                     logger.info(table + ' 已经读出 ' + str(count / 10000) + ' 万条数据'
-                                + '    ' + record['create_time'])
+                                + '    ' + str(record['create_time']))
                 else:
                     logger.info(table + ' 已经读出 ' + str(count / 10000) + ' 万条数据')
 
@@ -170,7 +170,7 @@ class MongodbIncrementalSync:
 
         self.logger = logging.getLogger('MongodbIncrementalSync')
         self.logger.addHandler(handle)
-        self.logger.setLevel(logging.INFO)
+        # self.logger.setLevel(logging.INFO)
 
         self.client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT, unicode_decode_error_handler='ignore')
         admin = self.client['admin']
@@ -180,7 +180,7 @@ class MongodbIncrementalSync:
         self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
                        'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
 
-        oplog_time = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).next()['ts']
+        oplog_begin_time = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).next()['ts']
         if os.path.exists('./listener_status'):
             status_time = json.loads(open('./listener_status').readline().strip())['sync_time']
 
@@ -189,28 +189,32 @@ class MongodbIncrementalSync:
             result_local_datetime = utc_datetime - utc_offset_timedelta
             status_time_s = int(result_local_datetime.timestamp())
 
-            self.logger.warning('status_time: ' + str(status_time_s) + ' oplog_time: ' + str(oplog_time.time))
-            if oplog_time.time < status_time_s:
+            if oplog_begin_time.time < status_time_s:
                 self.start_ts = bson.timestamp.Timestamp(status_time_s, 1024)
             else:
                 self.logger.warning('listener_status记载的时间 ' + status_time + ' 比oplog中最早的时间'
-                                    + str(datetime.datetime.utcfromtimestamp(oplog_time.time)) + ' 早')
-                self.start_ts = oplog_time
+                                    + str(datetime.datetime.utcfromtimestamp(oplog_begin_time.time)) + ' 早')
+                self.start_ts = oplog_begin_time
         else:
-            self.start_ts = oplog_time
+            self.start_ts = oplog_begin_time
 
-        last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}).sort('$natural', pymongo.DESCENDING) \
+        earliest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}).sort('$natural', pymongo.ASCENDING) \
+            .next()
+        latest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}).sort('$natural', pymongo.DESCENDING) \
             .next()
 
         # 记录监听状态
         self.status = {
-            # 本次监听开始时间
+            # 本次监听的 oplog 起始时间
             'start_time': str(datetime.datetime.utcfromtimestamp(self.start_ts.time)),
             # 本次监听最近一次同步操作的执行时间
             'time': str(datetime.datetime.now()).split('.')[0],
-            'sync_time': '',  # 本次监听最近一次同步的操作的时间
-            # MongoDB 待同步端最新操作的表和时间
-            'oplog_new': str(last_log['ns']) + ': ' + str(datetime.datetime.utcfromtimestamp(last_log['ts'].time)),
+            # 本次监听最近一次同步的表和时间
+            'sync_progress': '',
+            # MongoDB 待同步端最早操作的表和时间
+            'earliest_log': str(earliest_log['ns']) + str(datetime.datetime.utcfromtimestamp(earliest_log['ts'].time)),
+            # MongoDB 待同步端最近操作的表和时间
+            'latest_log': str(latest_log['ns']) + ': ' + str(datetime.datetime.utcfromtimestamp(latest_log['ts'].time)),
             # 本次监听监听到的操作总数
             'number': 0,
             # 每个 MongoSB 表更新日期, 累计更新次数等信息
@@ -239,7 +243,7 @@ class MongodbIncrementalSync:
                             new_doc = dict()
                             new_doc['op'] = 'd' if op == 'd' else 'i'
                             new_doc['table_name'] = doc['ns'].split('.')[1]
-                            new_doc['_id'] = str(doc['o']['_id'] if '_id' in doc['o'] else doc['o2']['_id'])
+                            new_doc['_id'] = str(doc['o']['_id'] if '_id' in doc['o'] else str(doc['o2']['_id']))
                             new_doc['columns'] = {}
 
                             if 'o' in doc:
@@ -248,7 +252,6 @@ class MongodbIncrementalSync:
                                 elif op == 'i':
                                     for i in doc['o']:
                                         new_doc['columns'][i] = str(doc['o'][i])
-                                    pass
                                 elif op == 'u':
                                     if '$set' in doc['o']:
                                         for i in doc['o']['$set']:
@@ -259,20 +262,26 @@ class MongodbIncrementalSync:
 
                             QUEUE.put(new_doc)
 
-                            self.logger.info(str(QUEUE.qsize()) + ' 读出 MongoDB ' + str(new_doc) + ' <===> ' + str(doc))
+                            self.logger.info(str(QUEUE.qsize()) + ' 读出 MongoDB ' + new_doc['_id'])
 
                             self.status['time'] = str(datetime.datetime.now()).split('.')[0]
-                            self.status['sync_time'] = str(datetime.datetime.utcfromtimestamp(doc['ts'].time))
+                            self.status['sync_progress'] = str(doc['ns']) + ': ' \
+                                + str(datetime.datetime.utcfromtimestamp(doc['ts'].time))
+
                             self.status['table_info'][table_name] = {
-                                't_sync_time': str(datetime.datetime.utcfromtimestamp(doc['ts'].time)),
-                                'count': 1 if table_name not in self.status['table_info']
-                                else self.status['table_info'][table_name]['count'] + 1
+                                't_sync_progress': str(datetime.datetime.utcfromtimestamp(doc['ts'].time)),
+                                't_number': 1 if table_name not in self.status['table_info']
+                                else self.status['table_info'][table_name]['t_number'] + 1
                             }
                         if time.time() - write_ts > write_interval:
-                            last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}})\
+                            earliest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}})\
+                                .sort('$natural', pymongo.ASCENDING).next()
+                            latest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}})\
                                 .sort('$natural', pymongo.DESCENDING).next()
-                            self.status['oplog_new'] = str(last_log['ns']) + ': ' + \
-                                str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
+                            self.status['ealiest_log'] = str(earliest_log['ns']) \
+                                + str(datetime.datetime.utcfromtimestamp(earliest_log['ts'].time))
+                            self.status['latest_log'] = str(latest_log['ns']) \
+                                + str(datetime.datetime.utcfromtimestamp(latest_log['ts'].time))
 
                             write_ts = time.time()
                             open('./listener_status', 'w').write(json.dumps(self.status))
@@ -280,10 +289,14 @@ class MongodbIncrementalSync:
                     time.sleep(0.001)
 
             except Exception as e:
-                last_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}) \
+                earliest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}) \
+                    .sort('$natural', pymongo.ASCENDING).next()
+                latest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}) \
                     .sort('$natural', pymongo.DESCENDING).next()
-                self.status['oplog_new'] = str(last_log['ns']) + ': ' + \
-                    str(datetime.datetime.utcfromtimestamp(last_log['ts'].time))
+                self.status['ealiest_log'] = str(earliest_log['ns']) \
+                    + str(datetime.datetime.utcfromtimestamp(earliest_log['ts'].time))
+                self.status['latest_log'] = str(latest_log['ns']) \
+                    + str(datetime.datetime.utcfromtimestamp(latest_log['ts'].time))
 
                 self.status['exception'] = traceback.format_exc()
                 open('./listener_status', 'w').write(json.dumps(self.status))
@@ -301,7 +314,7 @@ class HbaseSync(threading.Thread):
 
         self.logger = logging.getLogger('HbaseSync')
         self.logger.addHandler(handle)
-        self.logger.setLevel(logging.INFO)
+        # self.logger.setLevel(logging.INFO)
 
     def write_hbase(self, data):
         """
@@ -326,11 +339,7 @@ class HbaseSync(threading.Thread):
 
         op = data['op']
         table_name = bytes(data['table_name'], "utf-8")
-        row_key = None
-        try:
-            row_key = bytes(hashlib.md5(bytes(data['_id'], "utf-8")).hexdigest()[0:10] + ':' + data['_id'], "utf-8")
-        except:
-            self.logger.info('===' + str(data))
+        row_key = bytes(hashlib.md5(bytes(data['_id'], "utf-8")).hexdigest()[0:10] + ':' + data['_id'], "utf-8")
         columns = data['columns'] if 'columns' in data else []
 
         if op == 'i':
