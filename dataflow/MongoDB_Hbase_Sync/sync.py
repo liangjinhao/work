@@ -140,7 +140,7 @@ class MongodbFullSync(threading.Thread):
         cursor = client[db_name][table_name].find().sort('$natural', pymongo.ASCENDING)
         for record in cursor:
             count += 1
-            if count % 100000 == 0:
+            if count % 10000 == 0:
                 if 'create_time' in record:
                     logger.info(table + ' 已经读出 ' + str(count / 10000) + ' 万条数据'
                                 + '    ' + str(record['create_time']))
@@ -395,7 +395,7 @@ if __name__ == '__main__':
 
     MongodbIncrementalSync().start()
 
-    for i in range(5):
+    for i in range(50):
         HbaseSync().start()
 
     QUEUE.join()
