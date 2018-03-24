@@ -2,6 +2,7 @@ import pymongo
 import logging
 from logging.handlers import RotatingFileHandler
 import threading
+import traceback
 
 
 # MongoDB 信息
@@ -44,33 +45,37 @@ class ReplaceOSS(threading.Thread):
                 if 'create_time' in record:
                     self.logger.warning(table + ' 已经替换 ' + str(count / 10000) + ' 万条数据')
 
-            if table in ['hb_charts', 'hb_tables', 'juchao_charts', 'juchao_tables']:
-                if 'pngFile' in record and 'oss-cn-hangzhou' in record['pngFile']:
-                    new_pngFile = record['pngFile'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
-                    collection.update_one({'_id': record['_id']}, {'$set': {'pngFile': new_pngFile}})
-                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
-                if 'fileUrl' in record and record['fileUrl'] is not None:
-                    new_fileUrl_oss = record['fileUrl'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
-                    collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+            try:
 
-            elif table in ['hb_text', 'juchao_text']:
-                if 'fileUrl' in record and 'oss-cn-hangzhou' in record['fileUrl']:
-                    new_fileUrl_oss = record['fileUrl'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
-                    collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
-                if 'html_file' in record and 'oss-cn-hangzhou' in record['html_file']:
-                    new_html_file_oss = record['html_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
-                    collection.update_one({'_id': record['_id']}, {'$set': {'html_file': new_html_file_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
-                if 'text_file' in record and 'oss-cn-hangzhou' in record['text_file']:
-                    new_text_file_oss = record['text_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
-                    collection.update_one({'_id': record['_id']}, {'$set': {'text_file': new_text_file_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
-                if 'paragraph_file' in record and 'oss-cn-hangzhou' in record['paragraph_file']:
-                    new_paragraph_file_oss = record['paragraph_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
-                    collection.update_one({'_id': record['_id']}, {'$set': {'paragraph_file': new_paragraph_file_oss}})
-                    self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+                if table in ['hb_charts', 'hb_tables', 'juchao_charts', 'juchao_tables']:
+                    if 'pngFile' in record and 'oss-cn-hangzhou' in record['pngFile']:
+                        new_pngFile = record['pngFile'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                        collection.update_one({'_id': record['_id']}, {'$set': {'pngFile': new_pngFile}})
+                        self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+                    if 'fileUrl' in record and record['fileUrl'] is not None:
+                        new_fileUrl_oss = record['fileUrl'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                        collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
+                        self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+
+                elif table in ['hb_text', 'juchao_text']:
+                    if 'fileUrl' in record and 'oss-cn-hangzhou' in record['fileUrl']:
+                        new_fileUrl_oss = record['fileUrl'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                        collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
+                        self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+                    if 'html_file' in record and 'oss-cn-hangzhou' in record['html_file']:
+                        new_html_file_oss = record['html_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                        collection.update_one({'_id': record['_id']}, {'$set': {'html_file': new_html_file_oss}})
+                        self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+                    if 'text_file' in record and 'oss-cn-hangzhou' in record['text_file']:
+                        new_text_file_oss = record['text_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                        collection.update_one({'_id': record['_id']}, {'$set': {'text_file': new_text_file_oss}})
+                        self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+                    if 'paragraph_file' in record and 'oss-cn-hangzhou' in record['paragraph_file']:
+                        new_paragraph_file_oss = record['paragraph_file'].replace('oss-cn-hangzhou', 'oss-cn-hongkong')
+                        collection.update_one({'_id': record['_id']}, {'$set': {'paragraph_file': new_paragraph_file_oss}})
+                        self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
+            except:
+                self.logger.warning(traceback.format_exc())
 
         self.logger.warning(table + ' 已经替换玩所有的OSS')
         client.close()
