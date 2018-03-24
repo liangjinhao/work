@@ -3,7 +3,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import threading
 import traceback
-
+import time
 
 # MongoDB 信息
 MONGODB_HOST = 'dds-j6cd3f25db6afa741.mongodb.rds.aliyuncs.com'
@@ -76,6 +76,8 @@ class ReplaceOSS(threading.Thread):
                         self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
             except:
                 self.logger.warning(traceback.format_exc())
+
+            time.sleep(0.001)
 
         self.logger.warning(table + ' 已经替换玩所有的OSS')
         client.close()
