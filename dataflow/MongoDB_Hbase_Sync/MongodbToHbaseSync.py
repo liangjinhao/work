@@ -219,7 +219,7 @@ class MongodbIncrementalSync(threading.Thread):
                     for doc in cursor:
                         count += 1
                         if count % 100000 == 0:
-                            logger.info('已经同步' + str(count / 10000) + ' 万条操作记录')
+                            self.logger.info('已经同步' + str(count / 10000) + ' 万条操作记录')
 
                         table_name = doc['ns']
                         self.status['number'] = self.status['number'] + 1
