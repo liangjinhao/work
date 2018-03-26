@@ -45,6 +45,9 @@ class ReplaceOSS(threading.Thread):
                 if 'create_time' in record:
                     self.logger.warning(table + ' 已经替换 ' + str(count / 10000) + ' 万条数据')
 
+            if record is None:
+                time.sleep(0.5)
+
             try:
 
                 if table in ['hb_charts', 'hb_tables', 'juchao_charts', 'juchao_tables']:
@@ -76,6 +79,7 @@ class ReplaceOSS(threading.Thread):
                         self.logger.info(table + ' 替换OSS: ' + str(record['_id']))
             except:
                 self.logger.warning(traceback.format_exc())
+                time.sleep(0.5)
 
             time.sleep(0.001)
 
