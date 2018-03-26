@@ -252,43 +252,48 @@ class ScrawlImagesConsumer(threading.Thread):
         "result": ['line_chart']}'
         :return:
         """
-        try:
-            body = str(body, encoding='utf-8') if isinstance(body, bytes) else body
-            body = json.loads(body)
-            url = hashlib.md5(str(body['url']).encode()).hexdigest()
-            if body['ok']:
-                image_type = str(body['result'])
-            else:
-                image_type = str([])
-            data = {'url': url, 'img_type': image_type}
 
-            self.write_hbase([data], self.hbase_table, self.thrift_ip, self.thrift_port)
+        body = str(body, encoding='utf-8') if isinstance(body, bytes) else body
+        body = json.loads(body)
+        url = hashlib.md5(str(body['url']).encode()).hexdigest()
+        if body['ok']:
+            image_type = str(body['result'])
+        else:
+            image_type = str([])
+        data = {'url': url, 'img_type': image_type}
 
-            img = self.get_hbase_row(url)
-            self.send(img)
+        self.write_hbase([data], self.hbase_table, self.thrift_ip, self.thrift_port)
 
-            # To process body
-            ch.basic_ack(delivery_tag=method.delivery_tag)
+        img = self.get_hbase_row(url)
+        self.send(img)
 
-        except Exception as e:
-            logger_consumer.exception('callback 出现错误' + str(e))
+        # To process body
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def run(self):
+        connection_live = True
+        while connection_live:
+            try:
+                credentials = pika.PlainCredentials(self.username, self.password)
+                connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.RabbitMQ_ip, port=self.RabbitMQ_port,
+                                                                               virtual_host=self.vhost,
+                                                                               credentials=credentials))
+                channel = connection.channel()
+                channel.queue_declare(
+                    queue=self.queue_name,
+                    durable=True,
+                    arguments={
+                        "x-dead-letter-exchange": "",
+                        "x-dead-letter-routing-key": self.queue_name,
+                    }
+                )
 
-        credentials = pika.PlainCredentials(self.username, self.password)
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=self.RabbitMQ_ip, port=self.RabbitMQ_port,
-                                                                       virtual_host=self.vhost,
-                                                                       credentials=credentials))
-        channel = connection.channel()
-        channel.queue_declare(
-            queue=self.queue_name,
-            durable=True,
-            arguments={
-                "x-dead-letter-exchange": "",
-                "x-dead-letter-routing-key": self.queue_name,
-            }
-        )
-
-        channel.basic_qos(prefetch_count=1)
-        channel.basic_consume(self.callback, queue=self.queue_name)
-        channel.start_consuming()
+                channel.basic_qos(prefetch_count=1)
+                channel.basic_consume(self.callback, queue=self.queue_name)
+                channel.start_consuming()
+                connection_live = False
+            except Exception as e:
+                connection_live = True
+                logger_consumer.exception('callback 出现错误' + str(e))
+                logger_consumer.warning('重新启动！')
+                self.run()
