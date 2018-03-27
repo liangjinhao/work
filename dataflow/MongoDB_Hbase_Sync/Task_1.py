@@ -67,7 +67,7 @@ if __name__ == '__main__':
     df.show(10)
     print('======count=====', df.count())
 
-    result_rdd = df.rdd.foreachPartition(lambda x: down_load_oss(x))
+    result_rdd = df.rdd.mapPartitions(lambda x: down_load_oss(x))
     result_df = spark_session.createDataFrame(result_rdd, ['id', 'text'])
 
     result_df.show(10)
