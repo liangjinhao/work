@@ -66,6 +66,7 @@ class ReplaceOSS(threading.Thread):
 
             if record is None:
                 time.sleep(0.5)
+                continue
 
             try:
                 # 这三个表的 pngFile 和 pngFile 字段有 oss 链接
