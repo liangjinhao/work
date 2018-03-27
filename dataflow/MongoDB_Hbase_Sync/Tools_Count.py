@@ -17,25 +17,16 @@ if __name__ == '__main__':
 
     connector = pshc.PSHC(sc, sqlContext)
 
-    var1 = input("Please enter Hbase table: ")
-    var2 = input("Please enter start_time ('%Y-%m-%d %H:%M:%S'): ")
-    var3 = input("Please enter stop_time ('%Y-%m-%d %H:%M:%S'): ")
+    startTime = datetime.datetime.strptime('2018-3-1 0:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    stopTime = datetime.datetime.strptime('2100-1-1 0:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    table_name = 'hb_text'
 
-    startTime = None
-    stopTime = None
-    if var2 is not None and var3 is not None:
-        try:
-            startTime = datetime.datetime.strptime(var2, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-            stopTime = datetime.datetime.strptime(var3, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-        except Exception:
-            raise
-
-    table_name = var1
     catelog = {
         "table": {"namespace": "default", "name": table_name},
         "rowkey": "id",
         "columns": {
-            "id": {"cf": "rowkey", "col": "key", "type": "string"}
+            "id": {"cf": "rowkey", "col": "key", "type": "string"},
+            "create_time": {"cf": "data", "col": "create_time", "type": "string"}
         }
     }
 
