@@ -10,7 +10,8 @@ from hbase import Hbase
 from hbase.Hbase import *
 from logging.handlers import RotatingFileHandler
 import traceback
-from multiprocessing.dummy import Pool as ThreadPool
+import hashlib
+import ast
 
 
 """
@@ -106,6 +107,8 @@ def send(x):
                 "content": "",
                 "crawl_time": "",  # 2017-12-27 16:01:23
                 "brief": "",  # dese
+                "doc_feature": "",  # 区分文档的特征，现为 title 的 md5 值
+                "first_image_oss": "",  # 资讯的第一个图片oss链接
                 "source_url": "",  # laiyuan
                 "publish_time": "",  # 2017-12-01 10:20:49
                 "source_name": "",  # source
@@ -130,6 +133,18 @@ def send(x):
 
             news_json['crawl_time'] = row['crawl_time'] if 'crawl_time' in row else ''
             news_json['brief'] = row['dese'] if 'dese' in row else ''
+
+            if 'title' in row and row['title'] != '':
+                news_json['doc_feature'] = hashlib.md5(bytes(row['title'], encoding="utf-8")).hexdigest()
+
+            if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
+                try:
+                    image_list = ast.literal_eval(row['image_list'])
+                    if isinstance(image_list, list):
+                        news_json['first_image_oss'] = image_list[0]
+                except Exception:
+                    logger.error(traceback.format_exc())
+
             news_json['source_url'] = row['laiyuan'] if 'laiyuan' in row else ''
             news_json['source_name'] = row['source'] if 'source' in row else ''
             news_json['title'] = row['title'] if 'title' in row else ''
