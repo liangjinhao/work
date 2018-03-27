@@ -11,21 +11,25 @@ import logging
 from logging.handlers import RotatingFileHandler
 import traceback
 
+"""
+负责监控国内 Mongo 集群的更新日志 oplog，将所有的 MongoDB 更新操作写入 MongoDB 消息队列
+"""
 
-# MongoDB 信息
+
+# 国内 MongoDB 连接信息
 MONGODB_HOST = 'dds-bp1d09d4b278ceb41.mongodb.rds.aliyuncs.com'
 MONGODB_PORT = 3717
 USER = 'bj_sync_hk'
 PASSWORD = '3e8beb9fb9a1'
 
 # Redis 信息
-REDIS_IP = '10.46.231.24'  # 10.46.231.24 47.97.27.84
+REDIS_IP = '10.46.231.24'
 REDIS_PORT = 6379
 OPLOG_QUEUE = 'oplog'
 OSS_QUEUE = 'oss'
 
-# 取MongoDB oplog数据的间隔，太小会导致生产数据太快而堆积数据
-INTERVAL = 0.0015
+# 取MongoDB oplog数据的间隔，太小会导致生产数据太快而堆积数据，太大会导致数据取得太慢
+INTERVAL = 0.001
 
 # Redis 中队列的最大长度
 MAX_OPLOG_SIZE = 1000000

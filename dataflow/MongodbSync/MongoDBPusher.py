@@ -10,7 +10,12 @@ from logging.handlers import RotatingFileHandler
 import traceback
 
 
-# MongoDB 信息
+"""
+从国内的 bj-mogo-sync002 上的 Mongo 消息队列中取出 Mongo 操作历史记录，然后将这些操作更新到香港的 Mongo 集群
+"""
+
+
+# 香港 MongoDB 连接信息信息
 MONGODB_HOST = 'dds-j6cd3f25db6afa741.mongodb.rds.aliyuncs.com'
 MONGODB_PORT = 3717
 USER = 'hk_sync'
@@ -78,7 +83,8 @@ class MongoDBPusher(threading.Thread):
                 except Exception as e:
                     r.rpush(OPLOG_QUEUE, oplog_data)
                     self.logger.error(str(r.llen(OPLOG_QUEUE)) + '    操作 HK MongoDB 失败，重新加到 Redis 队列末尾。 '
-                                      'oplog 为: ' + str(oplog_data) + '错误为: \n' + traceback.format_exc())
+                                      'oplog 为: ' + str(type(oplog_data)) + ' ' + str(oplog_data) + '错误为: \n'
+                                      + traceback.format_exc())
                     time.sleep(0.001)
             else:
                 self.logger.info('Redis oplog 队列中无数据，等待10s再取')
