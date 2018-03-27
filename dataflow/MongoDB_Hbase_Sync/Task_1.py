@@ -49,7 +49,7 @@ if __name__ == '__main__':
         "rowkey": "id",
         "columns": {
             "id": {"cf": "rowkey", "col": "key", "type": "string"},
-            "text_file": {"cf": "info", "col": "text_file", "type": "string"},
+            "text_file": {"cf": "data", "col": "text_file", "type": "string"},
         }
     }
 
@@ -68,7 +68,7 @@ if __name__ == '__main__':
         "rowkey": "id",
         "columns": {
             "id": {"cf": "rowkey", "col": "key", "type": "string"},
-            "text": {"cf": "info", "col": "text", "type": "string"}
+            "text": {"cf": "data", "col": "text", "type": "string"}
         }
     }
 
