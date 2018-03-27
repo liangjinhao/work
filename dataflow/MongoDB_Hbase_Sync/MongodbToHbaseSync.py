@@ -15,6 +15,7 @@ from thrift.transport import TSocket
 from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
 from hbase.ttypes import *
+import errno
 
 
 # 是否全量更新
@@ -60,6 +61,13 @@ class MongodbFullSync(threading.Thread):
         self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
                        'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
 
+        self.log_dir = './log'
+        try:
+            os.makedirs(self.log_dir)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
+
         # Queue 被塞满时，读取 MongoDB 的等候间隔
         self.wait_interval = 0.1
 
@@ -70,7 +78,7 @@ class MongodbFullSync(threading.Thread):
         :return:
         """
         start = time.time()
-        handle = RotatingFileHandler('./mongodb_full_sync.log', maxBytes=50 * 1024 * 1024, backupCount=3)
+        handle = RotatingFileHandler(self.log_dir + '/' + table + '.log', maxBytes=50 * 1024 * 1024, backupCount=3)
         handle.setFormatter(logging.Formatter(
             '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
 
@@ -90,7 +98,6 @@ class MongodbFullSync(threading.Thread):
 
             cursor = client[db_name][table_name].find().sort('$natural', pymongo.ASCENDING)
             for record in cursor:
-                count += 1
                 new_record = dict()
                 new_record['op'] = 'i'
                 new_record['table_name'] = table.split('.')[1]
@@ -114,6 +121,7 @@ class MongodbFullSync(threading.Thread):
                             logger.error(traceback.format_exc())
 
                 safe_put(new_record)
+                count += 1
 
                 if count % 10000 == 0:
                     if 'create_time' in record:
