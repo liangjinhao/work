@@ -6,6 +6,9 @@ import Utils
 import requests
 import re
 import json
+import hashlib
+import ast
+
 
 """
 该脚本采用Spark读取HBase的news_data表里的数据，并通过POST请求发送到Solr服务上去
@@ -34,6 +37,10 @@ org.apache.hbase:hbase-common:1.1.12
 --conf spark.pyspark.python=/mnt/disk1/data/chyan/virtualenv/bin/python 
 --py-files /mnt/disk1/data/chyan/work/data_flow/pshc.py /mnt/disk1/data/chyan/work/data_flow/NewsPushing.py
 """
+
+
+POST_URLS = ['http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
+             'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
 
 
 def classify_news(news):
@@ -148,6 +155,8 @@ def send(x):
             "content": "",
             "crawl_time": "",  # 2017-12-27 16:01:23
             "brief": "",  # dese
+            "doc_feature": "",  # 区分文档的特征，现为 title 的 md5 值
+            "first_image_oss": "",  # 资讯的第一个图片oss链接
             "source_url": "",  # laiyuan
             "publish_time": "",  # 2017-12-01 10:20:49
             "source_name": "",  # source
@@ -180,6 +189,18 @@ def send(x):
 
         news_json['crawl_time'] = row['crawl_time']
         news_json['brief'] = row['dese']
+
+        if 'title' in row and row['title'] != '':
+            news_json['doc_feature'] = hashlib.md5(bytes(row['title'], encoding="utf-8")).hexdigest()
+
+        if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
+            try:
+                image_list = ast.literal_eval(row['image_list'])
+                if isinstance(image_list, list):
+                    news_json['first_image_oss'] = image_list[0]
+            except Exception as e:
+                print(e)
+
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
@@ -202,10 +223,10 @@ def send(x):
         print(news_json)
 
         try:
-            requests.post('http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
-                          json=[news_json])
-            news_json['PUSH_STATUS'] = True
-            news_json['PUSH_TIME'] = str(datetime.datetime.now())
+            for url in POST_URLS:
+                requests.post(url, json=[news_json])
+                news_json['PUSH_STATUS'] = True
+                news_json['PUSH_TIME'] = str(datetime.datetime.now())
         except Exception as e:
             news_json['PUSH_STATUS'] = False
             news_json['PUSH_TIME'] = str(datetime.datetime.now())
@@ -249,15 +270,20 @@ if __name__ == '__main__':
         }
     }
 
-    load_from_hive = False
+    # 是否从 Hive 里读取数据来重推推送失败的数据。这个主要是在全量推送的过程中如果出现大比例推送失败，推送状态信息会写入Hive，
+    # 然后可以再从Hive里取出这些数据再重新推送。
+    RePush = False
 
-    if load_from_hive:
+    # 指定选取的推送起始时间，格式为 '%Y-%m-%d %H:%M:%S'
+    begin = '2018-1-31 11:59:59'
+
+    if RePush:
         conf = sparkSession.read.text('hdfs://10.27.71.108:8020/spark_data/news_pushing.conf')
         start_time = json.loads(conf.first()[0])['value']
         df = sparkSession.sql("SELECT * FROM abc.news_data_pushing WHERE PUSH_STATUS = false AND PUSH_TIME >= '"
                               + start_time + "'")
     else:
-        startTime = datetime.datetime.strptime('2018-1-31 11:59:59', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+        startTime = datetime.datetime.strptime(begin, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
         stopTime = datetime.datetime.strptime('2050-01-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
 
         df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
@@ -273,7 +299,7 @@ if __name__ == '__main__':
     result_df.registerTempTable('res_table')
 
     correct_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = true").first()[0]
-    wrong_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = true").first()[0]
+    wrong_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = false").first()[0]
     last_push_time = sparkSession.sql("SELECT PUSH_TIME from res_table ORDER BY PUSH_TIME DESC LIMIT 1").first()[0]
 
     print('======推送完成=======')
