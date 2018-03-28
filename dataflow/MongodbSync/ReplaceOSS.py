@@ -64,10 +64,6 @@ class ReplaceOSS(threading.Thread):
         logger.warning('开始替换' + table)
         for record in cursor:
 
-            if record is None:
-                time.sleep(0.5)
-                continue
-
             try:
                 # 这三个表的 pngFile 和 fileUrl 字段有 oss 链接
                 if table in ['hb_charts', 'hb_tables', 'juchao_charts', 'juchao_tables']:
