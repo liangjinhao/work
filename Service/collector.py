@@ -7,6 +7,7 @@ import term_ranking
 import ac_search
 import abc_time
 import update_dic
+import logging
 from collections import Counter
 
 CONFIG_FILE = "path.conf"
@@ -28,21 +29,29 @@ class Collector:
 
         self.te = abc_time.ABCYear()
 
-        self.phrase_dict_path = home_dir + conf.get("dictionary", "phrase")
+        self.phrase_dict_path = [home_dir + dict_file.strip() for dict_file in
+                                 conf.get("dictionary", "phrase").split(';')]
+        self.domain = conf.get("domain", "domain")
         self.phrase_dict = dict()
         self.reload_dict()
 
     def reload_dict(self):
-        self.phrase_dict = dict()
-        if os.path.exists(self.phrase_dict_path + '_local'):
-            with open(self.phrase_dict_path + '_local') as f:
-                for line in f:
-                    if not line.startswith('#') and line != '\n':
-                        self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
-        with open(self.phrase_dict_path) as f:
-            for line in f:
-                if not line.startswith('#') and line != '\n':
-                    self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
+        for dict_path in self.phrase_dict_path:
+            dict_name = dict_path.split('/')[-1]
+
+            if os.path.exists(dict_path) and self.domain in dict_name:
+                logging.info('加载' + dict_path)
+                with open(dict_path) as f:
+                    for line in f:
+                        if not line.startswith('#') and line != '\n':
+                            self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
+
+            if os.path.exists(dict_path + '_local') and self.domain in dict_name:
+                logging.info('加载' + dict_path + '_local')
+                with open(dict_path + '_local') as f:
+                    for line in f:
+                        if not line.startswith('#') and line != '\n':
+                            self.phrase_dict[line.strip('\n').split('\t')[0]] = line.strip('\n').split('\t')[-1]
 
     def dict_merge(self, arg):
         """
@@ -120,8 +129,11 @@ class Collector:
     def tune_crf_tag(self, arg):
         """
         根据xgboost的预测权重值来调整CRF的tag。
+        1. 当搜索域是 charts 时
         当xgboost的预测权重值大于0.3时，而CRF的标签为useless时，将CRF的标签修为subject4;
         当xgboost的预测权重值小于0.2时，而CRF的标签不为useless时，将CRF的标签修为useless;
+        2. 当搜索域是 news 时
+        当xgboost的预测权重值大于0时，CRF标签为useless时，将CRF的标签修为news_others
         :param arg:
         :return:
         """
@@ -132,12 +144,21 @@ class Collector:
         for i in range(len(crf_result)):
             crf_tag = crf_result[i]['type']
             weight = xgboost_result[i]['weight']
-            if crf_tag == 'useless' and weight > 0.3:
-                new_crf_result.append({'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'subject4'})
-            # elif crf_tag != 'useless' and weight < 0.2:
-            #     new_crf_result.append({'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'useless'})
-            else:
-                new_crf_result.append(crf_result[i])
+            if self.domain == 'charts':
+                if crf_tag == 'useless' and weight > 0.3:
+                    new_crf_result.append(
+                        {'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'subject4'})
+                # elif crf_tag != 'useless' and weight < 0.2:
+                #     new_crf_result.append(
+                #         {'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'useless'})
+                else:
+                    new_crf_result.append(crf_result[i])
+            elif self.domain == 'news':
+                if crf_tag == 'useless'  and weight > 0:
+                    new_crf_result.append(
+                        {'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'news_others'})
+                else:
+                    new_crf_result.append(crf_result[i])
         result = {'data': new_crf_result, 'term_weight': xgboost_result}
         return result
 
