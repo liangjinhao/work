@@ -24,7 +24,7 @@ def down_load_oss(x):
     for row in x:
         if 'text_file' in row and row['text_file'] is not None:
             file_name = row['text_file'].split('aliyuncs.com/')[-1]
-            if not bucket_hz.object_exists(file_name):
+            if bucket_hz.object_exists(file_name):
                 try:
                     file_stream = bucket_hz.get_object(file_name)
                 except oss2.exceptions.NoSuchKey as e:
