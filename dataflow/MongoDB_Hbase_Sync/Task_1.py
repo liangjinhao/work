@@ -38,7 +38,7 @@ def down_load_oss(x):
                 text = ''
 
                 is_binary = False
-                LOGGER.info('Reading File: ' + row['text_file'])
+                logger.info('Reading File: ' + row['text_file'])
                 print('Reading File: ', row['text_file'])
                 for line in file_stream:
                     if isinstance(line, bytes):
@@ -48,7 +48,7 @@ def down_load_oss(x):
                     else:
                         text = text + line
                 if is_binary:
-                    LOGGER.info('是一个二进制文件，使用 utf-8 编码后是\n' + text)
+                    logger.info('是一个二进制文件，使用 utf-8 编码后是\n' + text)
                     print('是一个二进制文件，使用 utf-8 编码后是\n', text)
 
                 new_row = {
@@ -67,8 +67,10 @@ if __name__ == '__main__':
     spark_session = SparkSession(sc)
     connector = pshc.PSHC(sc, sqlContext)
 
-    log4jLogger = sc._jvm.org.apache.log4j
-    LOGGER = log4jLogger.LogManager.getLogger(__name__)
+    # log4jLogger = sc._jvm.org.apache.log4j
+    # LOGGER = log4jLogger.LogManager.getLogger(__name__)
+
+    logger = logging.getLogger('MyLogger')
 
     catelog = {
         "table": {"namespace": "default", "name": "hb_text"},
