@@ -5,9 +5,11 @@ import threading
 import time
 import json
 from bson import json_util
+from bson import *
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
+import re
 
 
 """
@@ -52,8 +54,22 @@ class MongoDBPusher(threading.Thread):
             if oplog_data:
 
                 try:
+
                     oplog_data = str(oplog_data, 'utf-8') if isinstance(oplog_data, bytes) else oplog_data
-                    oplog_data = json_util.loads(oplog_data, object_hook=json_util.object_hook)
+                    try:
+                        oplog_data = json_util.loads(oplog_data, object_hook=json_util.object_hook)
+                    except json.decoder.JSONDecodeError:
+                        try:
+                            # oplog_data 不是一个json，而是一个 str(dict)
+                            oplog_data = re.sub(', tzinfo=<bson.tz_util.FixedOffset object at [\da-z]*>', '', oplog_data)
+                            oplog_data = eval(oplog_data)
+                        except:
+                            self.logger.error(traceback.format_exc())
+                            continue
+                    except:
+                        self.logger.error(traceback.format_exc())
+                        continue
+
                     action_type = oplog_data['op']
                     db = oplog_data['ns'].split(".")[0]
                     table_name = oplog_data['ns'].split(".")[-1]
