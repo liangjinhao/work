@@ -3,6 +3,7 @@ from pyspark.sql import SQLContext, SparkSession
 import pshc
 import oss2
 import logging
+import sys
 
 """
 该脚本读取 hb_text 表里的 text_file 字段（存有 OSS 链接）, 是然后取oss文本文件，再把oss 文本文件给写到 Hbase 中
@@ -19,6 +20,11 @@ ENDPOINT_HZ = 'oss-cn-hangzhou-internal.aliyuncs.com'
 def down_load_oss(x):
 
     bucket_hz = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HZ, BUCKET_HZ)
+
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.DEBUG)
+    logger = logging.getLogger('MyLogger')
+    logger.addHandler(sh)
 
     result = []
     for row in x:
@@ -66,11 +72,6 @@ if __name__ == '__main__':
     sqlContext = SQLContext(sc)
     spark_session = SparkSession(sc)
     connector = pshc.PSHC(sc, sqlContext)
-
-    # log4jLogger = sc._jvm.org.apache.log4j
-    # LOGGER = log4jLogger.LogManager.getLogger(__name__)
-
-    logger = logging.getLogger('MyLogger')
 
     catelog = {
         "table": {"namespace": "default", "name": "hb_text"},
