@@ -33,35 +33,17 @@ def down_load_oss(x):
             if bucket_hz.object_exists(file_name):
                 try:
                     file_stream = bucket_hz.get_object(file_name)
-                except oss2.exceptions.NoSuchKey as e:
-                    logging.error(e)
-                    print(e)
-                    continue
+                    text = str(file_stream.read(), 'utf-8')
+                    new_row = {
+                        'id': row['id'],
+                        'text': text
+                    }
+                    result.append(new_row)
                 except Exception as e:
                     logging.error(e)
                     print(e)
                     continue
-                text = ''
 
-                is_binary = False
-                logger.info('Reading File: ' + row['text_file'])
-                print('Reading File: ', row['text_file'])
-                for line in file_stream:
-                    if isinstance(line, bytes):
-                        is_binary = True
-                        decoded_line = str(line, 'utf-8')
-                        text = text + decoded_line
-                    else:
-                        text = text + line
-                if is_binary:
-                    logger.info('是一个二进制文件，使用 utf-8 编码后是\n' + text)
-                    print('是一个二进制文件，使用 utf-8 编码后是\n', text)
-
-                new_row = {
-                    'id': row['id'],
-                    'text': text
-                }
-                result.append(new_row)
     return result
 
 
@@ -83,13 +65,13 @@ if __name__ == '__main__':
     }
 
     df = connector.get_df_from_hbase(catelog)
-    df.show(10)
+    df.show(50, False)
     print('======count=====', df.count())
 
     result_rdd = df.rdd.mapPartitions(lambda x: down_load_oss(x))
-    result_df = spark_session.createDataFrame(result_rdd, ['id', 'text'])
+    result_df = spark_session.createDataFrame(result_rdd, ['id', 'text']).show
 
-    result_df.show(10)
+    result_df.show(50, False)
     print('======count=====', result_df.count())
 
     catelog2 = {
