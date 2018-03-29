@@ -31,8 +31,7 @@ HBASE_TABLE_NAME = b'news_data'
 # News Test: http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news
 # News Product: http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news
 
-POST_URLS = ['http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
-             'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
+POST_URLS = ['http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
 
 
 def get_hbase_row(rowkey):
@@ -178,7 +177,7 @@ if __name__ == '__main__':
     )
     logger = logging.getLogger('NewsPushing')
     logger.addHandler(handle)
-    logger.setLevel(logging.INFO)
+    # logger.setLevel(logging.INFO)
 
     # 记载时间解析失败例子的 logger
     time_parsing_handle = RotatingFileHandler('./time_parsing.log', maxBytes=10 * 1024 * 1024, backupCount=3)
@@ -190,6 +189,12 @@ if __name__ == '__main__':
     logger_time_parsing.setLevel(logging.INFO)
 
     r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+
+    count_interval = 1 * 60
+    start_time = time.time()
+    start_queue_size = r.llen(REDIS_QUEUE)
+    queue_out_count = 0
+
     while True:
         rowkey = r.lpop(name=REDIS_QUEUE)
 
@@ -197,6 +202,16 @@ if __name__ == '__main__':
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
             send([news])
+
+            queue_out_count += 1
+            if time.time() - start_time > count_interval:
+                queue_in_count = r.llen(REDIS_QUEUE) - start_queue_size + queue_out_count
+                logger.warning('在过去的' + str(count_interval/60) + '分钟内队列里写入了 '
+                               + str(queue_in_count) + ' 条，写出了 ' + str(queue_out_count) + ' 条')
+                start_time = time.time()
+                start_queue_size = r.llen(REDIS_QUEUE)
+                queue_out_count = 0
+
         else:
-            logger.info('Redis 队列中无数据，等待5s再取')
+            logger.warning('Redis 队列中无数据，等待5s再取')
             time.sleep(5)
