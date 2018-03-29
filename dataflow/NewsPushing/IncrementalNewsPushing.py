@@ -205,11 +205,12 @@ if __name__ == '__main__':
 
             queue_out_count += 1
             if time.time() - start_time > count_interval:
-                queue_in_count = r.llen(REDIS_QUEUE) - start_queue_size + queue_out_count
-                logger.warning('在过去的' + str(count_interval/60) + '分钟内队列里写入了 '
+                end_queue_size = r.llen(REDIS_QUEUE)
+                queue_in_count = end_queue_size - start_queue_size + queue_out_count
+                logger.warning(str(end_queue_size) + '    在过去的' + str(count_interval/60) + '分钟内队列里写入了 '
                                + str(queue_in_count) + ' 条，写出了 ' + str(queue_out_count) + ' 条')
                 start_time = time.time()
-                start_queue_size = r.llen(REDIS_QUEUE)
+                start_queue_size = end_queue_size
                 queue_out_count = 0
 
         else:
