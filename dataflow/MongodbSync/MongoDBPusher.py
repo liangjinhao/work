@@ -63,6 +63,9 @@ class MongoDBPusher(threading.Thread):
                             # oplog_data 不是一个json，而是一个 str(dict)
                             oplog_data = re.sub(', tzinfo=<bson.tz_util.FixedOffset object at [\da-z]*>', '', oplog_data)
                             oplog_data = eval(oplog_data)
+                            # update 操作要使用 $set 操作符
+                            if oplog_data['op'] == 'u' and '$set' not in oplog_data['o']:
+                                oplog_data['o'] = {'$set': oplog_data['o']}
                         except:
                             self.logger.error(traceback.format_exc())
                             continue
@@ -87,12 +90,8 @@ class MongoDBPusher(threading.Thread):
                             collection.replace_one({'_id': oplog_data['o']['_id']}, oplog_data['o'], True)
                             self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Insert to HK MongoDB: ' + str(_id))
                     elif action_type == 'u':
-                        try:
-                            collection.update_one(oplog_data['o2'], oplog_data['o'])
-                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
-                        except ValueError:
-                            collection.replace_one(oplog_data['o2'], oplog_data['o'], True)
-                            self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
+                        collection.update_one(oplog_data['o2'], oplog_data['o'], upsert=True)
+                        self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(_id))
                     elif action_type == 'd':
                         collection.delete_one(oplog_data['o'])
                         self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Delete to HK MongoDB: ' + str(_id))
