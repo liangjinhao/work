@@ -25,6 +25,39 @@ THRIFT_IP = '10.27.71.108'
 THRIFT_PORT = 9099
 
 
+def save_to_hive(x):
+    bucket_hz = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HZ, BUCKET_HZ)
+
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setLevel(logging.DEBUG)
+    logger = logging.getLogger('MyLogger')
+    logger.addHandler(sh)
+
+    result = []
+    for row in x:
+        if 'text_file' in row and row['text_file'] is not None:
+            file_name = row['text_file'].split('aliyuncs.com/')[-1]
+            if bucket_hz.object_exists(file_name):
+                try:
+                    file_stream = bucket_hz.get_object(file_name)
+                    text = str(file_stream.read(), 'utf-8')
+                    parts = text.split('\n')
+                    index = 1
+                    for p in parts:
+                        new_row = {
+                            'id': row['id'],
+                            'text': p,
+                            'index': index
+                        }
+                        index += 1
+                        result.append(new_row)
+                except Exception as e:
+                    logging.error(e)
+                    print(e)
+                    continue
+    return result
+
+
 def save_oss_to_hbase(x):
 
     bucket_hz = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HZ, BUCKET_HZ)
@@ -112,23 +145,22 @@ if __name__ == '__main__':
     df.show(50, False)
     print('======count=====', df.count())
 
-    USE_THRIFT = True
+    fileName_rdd = df.rdd.repartition(1000).cache
+    print("load file count: ", fileName_rdd.count())
+    result_rdd = fileName_rdd.mapPartitions(lambda x: save_to_hive(x))
 
-    if USE_THRIFT:
-        df.rdd.foreachPartition(lambda x: save_oss_to_hbase(x))
-    else:
-        result_rdd = df.rdd.repartition(1000).mapPartitions(lambda x: down_load_oss(x))
-        result_df = spark_session.createDataFrame(result_rdd, ['id', 'text'])
+    result_df = spark_session.createDataFrame(result_rdd, ['id', 'text', 'index'])
 
-        result_df.show(50, False)
-        print('======count=====', result_df.count())
+    result_df.write.saveAsTable('abc.hb_text_oss_file', mode='overwrite')
 
-        catelog2 = {
-            "table": {"namespace": "default", "name": "hb_text_oss_file"},
-            "rowkey": "id",
-            "columns": {
-                "id": {"cf": "rowkey", "col": "key", "type": "string"},
-                "text": {"cf": "data", "col": "text", "type": "string"}
-            }
-        }
-        connector.save_df_to_hbase(result_df, catelog2)
+    print('======count=====', spark_session.table('abc.hb_text_oss_file').count())
+
+    # catelog2 = {
+    #     "table": {"namespace": "default", "name": "hb_text_oss_file"},
+    #     "rowkey": "id",
+    #     "columns": {
+    #         "id": {"cf": "rowkey", "col": "key", "type": "string"},
+    #         "text": {"cf": "data", "col": "text", "type": "string"}
+    #     }
+    # }
+    # connector.save_df_to_hbase(result_df, catelog2)
