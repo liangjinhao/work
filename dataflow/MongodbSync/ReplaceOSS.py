@@ -68,30 +68,37 @@ class ReplaceOSS(threading.Thread):
                 # 这三个表的 pngFile 和 fileUrl 字段有 oss 链接
                 if table in ['hb_charts', 'hb_tables', 'juchao_charts', 'juchao_tables']:
                     if 'pngFile' in record and record['pngFile'] is not None:
-                        new_pngFile = record['pngFile'].replace('abc-crawler.oss-cn-hangzhou', 'hk-crawler.oss-cn-hongkong')
+                        new_pngFile = record['pngFile'].replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
+                            .replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                         collection.update_one({'_id': record['_id']}, {'$set': {'pngFile': new_pngFile}})
                         # logger.info(table + ' 替换OSS: ' + str(record['_id']))
                     if 'fileUrl' in record and record['fileUrl'] is not None:
-                        new_fileUrl_oss = record['fileUrl'].replace('abc-crawler.oss-cn-hangzhou', 'hk-crawler.oss-cn-hongkong')
+                        new_fileUrl_oss = record['fileUrl'].replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
+                            .replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                         collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
                         # logger.info(table + ' 替换OSS: ' + str(record['_id']))
                     count += 1
                 # 这三个表的 fileUrl，html_file，text_file 和 paragraph_file 字段有 oss 链接
                 elif table in ['hb_text', 'juchao_text']:
                     if 'fileUrl' in record and record['fileUrl'] is not None:
-                        new_fileUrl_oss = record['fileUrl'].replace('abc-crawler.oss-cn-hangzhou', 'hk-crawler.oss-cn-hongkong')
+                        new_fileUrl_oss = record['fileUrl'].replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
+                            .replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                         collection.update_one({'_id': record['_id']}, {'$set': {'fileUrl': new_fileUrl_oss}})
                         # logger.info(table + ' 替换OSS: ' + str(record['_id']))
                     if 'html_file' in record and record['html_file'] is not None:
-                        new_html_file_oss = record['html_file'].replace('abc-crawler.oss-cn-hangzhou', 'hk-crawler.oss-cn-hongkong')
+                        new_html_file_oss = record['html_file'].replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
+                            .replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                         collection.update_one({'_id': record['_id']}, {'$set': {'html_file': new_html_file_oss}})
                         # logger.info(table + ' 替换OSS: ' + str(record['_id']))
                     if 'text_file' in record and record['text_file'] is not None:
-                        new_text_file_oss = record['text_file'].replace('abc-crawler.oss-cn-hangzhou', 'hk-crawler.oss-cn-hongkong')
+                        new_text_file_oss = record['text_file'].replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
+                            .replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                         collection.update_one({'_id': record['_id']}, {'$set': {'text_file': new_text_file_oss}})
                         # logger.info(table + ' 替换OSS: ' + str(record['_id']))
                     if 'paragraph_file' in record and record['paragraph_file'] is not None:
-                        new_paragraph_file_oss = record['paragraph_file'].replace('abc-crawler.oss-cn-hangzhou', 'hk-crawler.oss-cn-hongkong')
+                        new_paragraph_file_oss = record['paragraph_file']\
+                            .replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
+                            .replace('oss-cn-hangzhou', 'oss-cn-hongkong')
                         collection.update_one({'_id': record['_id']}, {'$set': {'paragraph_file': new_paragraph_file_oss}})
                         # logger.info(table + ' 替换OSS: ' + str(record['_id']))
                     count += 1
