@@ -145,7 +145,7 @@ if __name__ == '__main__':
     df.show(50, False)
     print('======count=====', df.count())
 
-    fileName_rdd = df.rdd.repartition(1000).cache
+    fileName_rdd = df.rdd.repartition(1000).cache()
     print("load file count: ", fileName_rdd.count())
     result_rdd = fileName_rdd.mapPartitions(lambda x: save_to_hive(x))
 
