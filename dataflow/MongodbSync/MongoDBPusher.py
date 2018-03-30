@@ -63,15 +63,16 @@ class MongoDBPusher(threading.Thread):
                             # oplog_data 不是一个json，而是一个 str(dict)
                             oplog_data = re.sub(', tzinfo=<bson.tz_util.FixedOffset object at [\da-z]*>', '', oplog_data)
                             oplog_data = eval(oplog_data)
-                            # update 操作要使用 $set 操作符
-                            if oplog_data['op'] == 'u' and '$set' not in oplog_data['o']:
-                                oplog_data['o'] = {'$set': oplog_data['o']}
                         except:
                             self.logger.error(traceback.format_exc())
                             continue
                     except:
                         self.logger.error(traceback.format_exc())
                         continue
+
+                    # update 操作要使用 $set 操作符
+                    if oplog_data['op'] == 'u' and '$set' not in oplog_data['o']:
+                        oplog_data['o'] = {'$set': oplog_data['o']}
 
                     action_type = oplog_data['op']
                     db = oplog_data['ns'].split(".")[0]
