@@ -3,14 +3,11 @@ from pyspark.sql import SQLContext, SparkSession
 import pshc
 import oss2
 import logging
-from thrift.transport import TSocket
-from thrift.protocol import TBinaryProtocol
-from hbase import Hbase
 from hbase.ttypes import *
 
 
 """
-该脚本读取 hb_text 表里的 text_file 字段（存有 OSS 链接）, 是然后取oss文本文件，再把oss 文本文件给写到 Hbase 中
+该脚本读取 hb_text 表里的 text_file 字段（存有 OSS 链接）, 是然后取oss文本文件，再把oss 文本文件给写到 Hive 中
 """
 
 
@@ -58,72 +55,6 @@ def save_to_hive(x):
     return result
 
 
-def save_oss_to_hbase(x):
-
-    bucket_hz = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HZ, BUCKET_HZ)
-
-    transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
-    transport = TTransport.TBufferedTransport(transport)
-    protocol = TBinaryProtocol.TBinaryProtocol(transport)
-    client = Hbase.Client(protocol)
-    transport.open()
-
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.DEBUG)
-    logger = logging.getLogger('MyLogger')
-    logger.addHandler(sh)
-
-    for row in x:
-        if 'text_file' in row and row['text_file'] is not None:
-            file_name = row['text_file'].split('aliyuncs.com/')[-1]
-            if bucket_hz.object_exists(file_name):
-                try:
-                    file_stream = bucket_hz.get_object(file_name)
-                    text = str(file_stream.read(), 'utf-8')
-                    mutations = []
-                    key = bytes('data:text', encoding="utf8")
-                    var = bytes(text, encoding="utf8")
-                    if len(var) < 10 * 1024 * 1024:
-                        mutations.append(Hbase.Mutation(column=key, value=var))
-                        client.mutateRow(bytes('hb_text_oss_file', "utf-8"), bytes(row['id'], "utf-8"), mutations, {})
-                except Exception as e:
-                    logging.error(e)
-                    print(e)
-                    continue
-
-    transport.close()
-
-
-def down_load_oss(x):
-
-    bucket_hz = oss2.Bucket(oss2.Auth(ACCESS_KEY_ID, ACCESS_KEY_SECRET), ENDPOINT_HZ, BUCKET_HZ)
-
-    sh = logging.StreamHandler(sys.stdout)
-    sh.setLevel(logging.DEBUG)
-    logger = logging.getLogger('MyLogger')
-    logger.addHandler(sh)
-
-    result = []
-    for row in x:
-        if 'text_file' in row and row['text_file'] is not None:
-            file_name = row['text_file'].split('aliyuncs.com/')[-1]
-            if bucket_hz.object_exists(file_name):
-                try:
-                    file_stream = bucket_hz.get_object(file_name)
-                    text = str(file_stream.read(), 'utf-8')
-                    new_row = {
-                        'id': row['id'],
-                        'text': text
-                    }
-                    result.append(new_row)
-                except Exception as e:
-                    logging.error(e)
-                    print(e)
-                    continue
-
-    return result
-
-
 if __name__ == '__main__':
 
     conf = SparkConf().setAppName("Download_Hb_text")
@@ -154,13 +85,3 @@ if __name__ == '__main__':
     result_df.write.saveAsTable('abc.hb_text_oss_file', mode='overwrite')
 
     print('======count=====', spark_session.table('abc.hb_text_oss_file').count())
-
-    # catelog2 = {
-    #     "table": {"namespace": "default", "name": "hb_text_oss_file"},
-    #     "rowkey": "id",
-    #     "columns": {
-    #         "id": {"cf": "rowkey", "col": "key", "type": "string"},
-    #         "text": {"cf": "data", "col": "text", "type": "string"}
-    #     }
-    # }
-    # connector.save_df_to_hbase(result_df, catelog2)
