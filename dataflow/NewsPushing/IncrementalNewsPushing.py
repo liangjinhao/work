@@ -21,7 +21,8 @@ import ast
 
 
 REDIS_IP = '10.174.97.43'
-REDIS_PORT = 6379
+REDIS_PORT = 8801
+REDIS_PASSWORD = "e65f63bb02d3"
 REDIS_QUEUE = 'index_pending_queue'
 
 THRIFT_IP = '10.27.71.108'
@@ -69,7 +70,7 @@ def post(url, rowkey, news_json, write_back_redis=True):
     :param write_back_redis: 是否将 post 失败的数据再重新写回到 Redis
     :return:
     """
-    redis_client = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+    redis_client = redis.Redis(host=REDIS_IP, port=REDIS_PORT, password=REDIS_PASSWORD)
     try:
         response = requests.post(url, json=[news_json])
         if response.status_code != 200 and write_back_redis:
@@ -188,7 +189,7 @@ if __name__ == '__main__':
     logger_time_parsing.addHandler(time_parsing_handle)
     logger_time_parsing.setLevel(logging.INFO)
 
-    r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
+    r = redis.Redis(host=REDIS_IP, port=REDIS_PORT, password=REDIS_PASSWORD)
 
     count_interval = 1 * 60
     start_time = time.time()
