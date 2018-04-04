@@ -74,6 +74,10 @@ class MongoDBPusher(threading.Thread):
                     if oplog_data['op'] == 'u' and '$set' not in oplog_data['o']:
                         oplog_data['o'] = {'$set': oplog_data['o']}
 
+                    # update 的 $set 操作里不能有 '_id'，该字段在 mongo 里是唯一的
+                    if oplog_data['op'] == 'u' and '_id' in oplog_data['o']['$set']:
+                        del oplog_data['o']['$set']['_id']
+
                     action_type = oplog_data['op']
                     db = oplog_data['ns'].split(".")[0]
                     table_name = oplog_data['ns'].split(".")[-1]
