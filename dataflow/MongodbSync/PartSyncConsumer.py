@@ -56,16 +56,13 @@ class PartSyncConsumer(threading.Thread):
                     message = str(message, 'utf-8') if isinstance(message, bytes) else message
                     message = json_util.loads(message, object_hook=json_util.object_hook)
 
-                    id = message['o']['_id']
-                    del message['o']['_id']
-
                     db = message['ns'].split(".")[0]
                     table_name = message['ns'].split(".")[-1]
                     database = self.client[db]
                     database.authenticate(USER, PASSWORD)
                     collection = database[table_name]
 
-                    collection.update_one(id,  {'$set': message['o']}, upsert=True)
+                    collection.update_one(message['_id'], message['o'], upsert=True)
                     self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(id))
 
                     time.sleep(0.002)

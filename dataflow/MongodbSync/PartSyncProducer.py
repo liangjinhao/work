@@ -28,7 +28,7 @@ OPLOG_QUEUE = 'part_sync'
 OSS_QUEUE = 'oss'
 
 # 取MongoDB oplog数据的间隔，太小会导致生产数据太快而堆积数据，太大会导致数据取得太慢
-INTERVAL = 0.001
+INTERVAL = 0.002
 
 # Redis 中队列的最大长度
 MAX_OPLOG_SIZE = 1000000
@@ -142,7 +142,9 @@ class PartSyncProducer(threading.Thread):
                     self.logger.info(
                         str(r.scard(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
-            message = {'ns': table_name, 'o':  {'$set': doc}}
+            _id = doc['_id']
+            del doc['_id']
+            message = {'ns': table_name, '_id': _id, 'o':  {'$set': doc}}
             r.rpush(OPLOG_QUEUE, json_util.dumps(message, default=json_util.default))
 
             time.sleep(INTERVAL)
