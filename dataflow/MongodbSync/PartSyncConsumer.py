@@ -62,7 +62,7 @@ class PartSyncConsumer(threading.Thread):
                     database.authenticate(USER, PASSWORD)
                     collection = database[table_name]
 
-                    collection.update_one(message['_id'], message['o'], upsert=True)
+                    collection.update_one({'_id': message['_id']}, message['o'], upsert=True)
                     self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(id))
 
                     time.sleep(0.002)
