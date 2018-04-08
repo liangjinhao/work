@@ -67,7 +67,15 @@ class PartSyncProducer(threading.Thread):
         admin = self.client['admin']
         admin.authenticate(USER, PASSWORD)
 
+        self.static = {
+            'cr_data.hb_charts': 0, 'cr_data.hb_tables': 0, 'cr_data.hb_text': 0,
+            'cr_data.juchao_charts': 0, 'cr_data.juchao_tables': 0, 'cr_data.juchao_text': 0
+        }
+        self.static_minute = 0
+
     def tablefetcher(self, table_name):
+
+        self.logger.warning('开始同步' + table_name)
 
         db = table_name.split('.')[0]
         table = table_name.split('.')[1]
@@ -80,12 +88,6 @@ class PartSyncProducer(threading.Thread):
 
         r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
 
-        static = {
-            'cr_data.hb_charts': 0, 'cr_data.hb_tables': 0, 'cr_data.hb_text': 0,
-            'cr_data.juchao_charts': 0, 'cr_data.juchao_tables': 0, 'cr_data.juchao_text': 0
-        }
-        static_minute = 0
-
         for doc in cursor:
 
             # 检查 Redis 数据是否堆积太多
@@ -93,7 +95,7 @@ class PartSyncProducer(threading.Thread):
             oss_size = r.scard(OSS_QUEUE)
             if oplog_siez > MAX_OPLOG_SIZE or oss_size > MAX_OSS_SIZE:
                 self.logger.warning('Redis 队列超过设置的长度限制，开始等候5分钟 ' +
-                                    'OPLOG: ' + str(oplog_siez) + ' OSS: ' + str(oss_size))
+                                    'part_sync: ' + str(oplog_siez) + ' OSS: ' + str(oss_size))
                 time.sleep(5 * 60)
 
             if table_name in ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.juchao_charts',
@@ -153,11 +155,11 @@ class PartSyncProducer(threading.Thread):
             message = {'ns': table_name, '_id': _id, 'o':  {'$set': doc}}
             r.rpush(OPLOG_QUEUE, json_util.dumps(message, default=json_util.default))
 
-            static[table_name] += 1
+            self.static[table_name] += 1
 
-            if datetime.datetime.now().minute % 5 == 0 and datetime.datetime.now().minute != static_minute:
-                self.logger.warning(str(static))
-                static_minute = datetime.datetime.now().minute
+            if datetime.datetime.now().minute % 5 == 0 and datetime.datetime.now().minute != self.static_minute:
+                self.logger.warning(str(self.static))
+                self.static_minute = datetime.datetime.now().minute
 
             time.sleep(INTERVAL)
 
