@@ -93,6 +93,15 @@ def send(x):
     :param x:
     :return:
     """
+
+    site_rank = dict()
+
+    with open('site_rank.txt', 'r') as f:
+        for line in f:
+            site_to_rank = line.strip().split('\t')
+            if len(site_to_rank) == 2:
+                site_rank[site_to_rank[0]] = site_to_rank[1]
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
 
         for row in x:
@@ -115,7 +124,7 @@ def send(x):
                 "title": "",  # title
                 "url": "",  # url
                 "tags": "",
-                'doc_score': 1.0,
+                'doc_score': 1.0,  # 网站 page rank 分值
                 "time": 0,
             })
 
@@ -150,6 +159,10 @@ def send(x):
             news_json['title'] = row['title'] if 'title' in row else ''
             news_json['url'] = row['url'] if 'url' in row else ''
             news_json['tags'] = row['tag'] if 'tag' in row else ''
+
+            domain = news_json['url'].replace('https://', '').replace('http://', '').replace('www.', '').split('/')
+            if domain[0] in site_rank:
+                news_json['doc_score'] = site_rank[domain[0]]
 
             try:
                 news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')

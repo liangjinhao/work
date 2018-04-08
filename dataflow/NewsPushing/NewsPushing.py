@@ -144,6 +144,14 @@ def send(x):
 
     result = []
 
+    site_rank = dict()
+
+    with open('site_rank.txt', 'r') as f:
+        for line in f:
+            site_to_rank = line.strip().split('\t')
+            if len(site_to_rank) == 2:
+                site_rank[site_to_rank[0]] = site_to_rank[1]
+
     for row in x:
 
         news_json = dict({
@@ -206,6 +214,10 @@ def send(x):
         news_json['title'] = row['title']
         news_json['url'] = row['url']
         news_json['tags'] = row['tag']
+
+        domain = news_json['url'].replace('https://', '').replace('http://', '').replace('www.', '').split('/')
+        if domain[0] in site_rank:
+            news_json['doc_score'] = site_rank[domain[0]]
 
         try:
             news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
