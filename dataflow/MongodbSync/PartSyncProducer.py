@@ -149,9 +149,9 @@ class PartSyncProducer(threading.Thread):
 
             self.static[table_name] += 1
 
-            if datetime.datetime.now().minute % 5 == 0 and datetime.datetime.now().minute != self.static_minute:
+            if datetime.datetime.now().minute // 5 != self.static_minute:
                 self.logger.warning(str(self.static))
-                self.static_minute = datetime.datetime.now().minute
+                self.static_minute = datetime.datetime.now().minute // 5
 
             time.sleep(INTERVAL)
 
