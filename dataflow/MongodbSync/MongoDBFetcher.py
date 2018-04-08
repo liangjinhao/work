@@ -148,3 +148,7 @@ class MongoDBFetcher(threading.Thread):
     def run(self):
         pool = ThreadPool(len(self.tables))
         pool.map(self.tablefetcher, self.tables)
+
+
+if __name__ == '__main__':
+    MongoDBFetcher().start()
