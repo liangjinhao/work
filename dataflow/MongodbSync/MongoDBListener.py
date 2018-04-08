@@ -145,7 +145,7 @@ class MongoDBListener(threading.Thread):
                                     r.sadd(OSS_QUEUE, pngFile_oss)
                                     self.logger.info(str(r.scard(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + pngFile_oss)
 
-                                if 'fileUrl' in doc['o']:
+                                if 'fileUrl' in doc['o'] and doc['o']['fileUrl'] is not None:
                                     fileUrl_oss = doc['o']['fileUrl']
                                     doc['o']['fileUrl'] = doc['o']['fileUrl']\
                                         .replace('abc-crawler.oss-cn', 'hk-crawler.oss-cn')\
