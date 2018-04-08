@@ -24,7 +24,7 @@ PASSWORD = '3e8beb9fb9a1'
 # Redis 信息
 REDIS_IP = '10.46.231.24'
 REDIS_PORT = 6379
-OPLOG_QUEUE = 'oplog'
+OPLOG_QUEUE = 'part_sync'
 OSS_QUEUE = 'oss'
 
 # 取MongoDB oplog数据的间隔，太小会导致生产数据太快而堆积数据，太大会导致数据取得太慢
@@ -35,14 +35,14 @@ MAX_OPLOG_SIZE = 1000000
 MAX_OSS_SIZE = 1000000
 
 
-class MongoDBFetcher(threading.Thread):
+class PartSyncProducer(threading.Thread):
 
     def __init__(self):
         """
         初始化
         """
 
-        super(MongoDBFetcher, self).__init__()
+        super(PartSyncProducer, self).__init__()
 
         # 需要同步的表
         self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
@@ -55,7 +55,7 @@ class MongoDBFetcher(threading.Thread):
         self.end_time = datetime.datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
 
         # 记载 MongoDBListener 线程情况的 logger
-        handle = RotatingFileHandler('./fetcher.log', maxBytes=50 * 1024 * 1024, backupCount=3)
+        handle = RotatingFileHandler('./part_sync_producer.log', maxBytes=50 * 1024 * 1024, backupCount=3)
         handle.setFormatter(logging.Formatter(
             '%(asctime)s %(name)-12s %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s'))
 
@@ -142,7 +142,8 @@ class MongoDBFetcher(threading.Thread):
                     self.logger.info(
                         str(r.scard(OSS_QUEUE)) + '    Push to Redis OSS queue: ' + paragraph_file_oss)
 
-            r.rpush(OPLOG_QUEUE, json_util.dumps(doc, default=json_util.default))
+            message = {'ns': table_name, 'o':  {'$set': doc}}
+            r.rpush(OPLOG_QUEUE, json_util.dumps(message, default=json_util.default))
 
             time.sleep(INTERVAL)
 
@@ -154,4 +155,4 @@ class MongoDBFetcher(threading.Thread):
 
 
 if __name__ == '__main__':
-    MongoDBFetcher().start()
+    PartSyncProducer().start()
