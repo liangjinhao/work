@@ -73,7 +73,10 @@ class MongoDBFetcher(threading.Thread):
         table = table_name.split('.')[1]
 
         cursor = self.client[db][table].find(
-            {'create_time': {"$and": [{'$gte': self.start_time}, {'$lte': self.end_time}]}})
+            {"$and": [
+                {'create_time': {'$gte': self.start_time}},
+                {'create_time': {'$lte': self.end_time}}
+            ]})
 
         r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
 
