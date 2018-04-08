@@ -71,4 +71,7 @@ class PartSyncConsumer(threading.Thread):
 
 
 if __name__ == '__main__':
-    PartSyncConsumer().start()
+
+    for i in range(50):
+        PartSyncConsumer().start()
+        print('MongoDB Part 推送线程 %s 开启', i)
