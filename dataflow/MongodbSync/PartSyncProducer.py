@@ -80,6 +80,12 @@ class PartSyncProducer(threading.Thread):
 
         r = redis.Redis(host=REDIS_IP, port=REDIS_PORT)
 
+        static = {
+            'cr_data.hb_charts': 0, 'cr_data.hb_tables': 0, 'cr_data.hb_text': 0,
+            'cr_data.juchao_charts': 0, 'cr_data.juchao_tables': 0, 'cr_data.juchao_text': 0
+        }
+        static_minute = 0
+
         for doc in cursor:
 
             # 检查 Redis 数据是否堆积太多
@@ -146,6 +152,12 @@ class PartSyncProducer(threading.Thread):
             del doc['_id']
             message = {'ns': table_name, '_id': _id, 'o':  {'$set': doc}}
             r.rpush(OPLOG_QUEUE, json_util.dumps(message, default=json_util.default))
+
+            static[table_name] += 1
+
+            if datetime.datetime.now().minute % 5 == 0 and datetime.datetime.now().minute != static_minute:
+                self.logger.warning(str(static))
+                static_minute = datetime.datetime.now().minute
 
             time.sleep(INTERVAL)
 
