@@ -65,7 +65,6 @@ class PartSyncConsumer(threading.Thread):
                     collection.update_one({'_id': message['_id']}, message['o'], upsert=True)
                     self.logger.info(str(r.llen(OPLOG_QUEUE)) + '    Update to HK MongoDB: ' + str(id))
 
-                    time.sleep(0.002)
             else:
                 self.logger.info('Redis oplog 队列中无数据，等待10s再取')
                 time.sleep(10)
