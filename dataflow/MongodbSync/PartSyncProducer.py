@@ -90,14 +90,6 @@ class PartSyncProducer(threading.Thread):
 
         for doc in cursor:
 
-            # 检查 Redis 数据是否堆积太多
-            oplog_siez = r.llen(OPLOG_QUEUE)
-            oss_size = r.scard(OSS_QUEUE)
-            if oplog_siez > MAX_OPLOG_SIZE or oss_size > MAX_OSS_SIZE:
-                self.logger.warning('Redis 队列超过设置的长度限制，开始等候5分钟 ' +
-                                    'part_sync: ' + str(oplog_siez) + ' OSS: ' + str(oss_size))
-                time.sleep(5 * 60)
-
             if table_name in ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.juchao_charts',
                               'cr_data.juchao_tables']:
                 # cr_data.hb_charts,cr_data.hb_tables,cr_data.juchao_charts,cr_data.juchao_tables 表
@@ -162,6 +154,14 @@ class PartSyncProducer(threading.Thread):
                 self.static_minute = datetime.datetime.now().minute
 
             time.sleep(INTERVAL)
+
+            # 检查 Redis 数据是否堆积太多
+            oplog_siez = r.llen(OPLOG_QUEUE)
+            oss_size = r.scard(OSS_QUEUE)
+            if oplog_siez > MAX_OPLOG_SIZE or oss_size > MAX_OSS_SIZE:
+                self.logger.warning('Redis 队列超过设置的长度限制，开始等候5分钟 ' +
+                                    'part_sync: ' + str(oplog_siez) + ' OSS: ' + str(oss_size))
+                time.sleep(5 * 60)
 
         self.logger.warning(table_name + '数据已经推送完')
 
