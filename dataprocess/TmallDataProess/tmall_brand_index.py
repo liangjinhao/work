@@ -4,8 +4,12 @@ from pyspark.sql import SQLContext, SparkSession
 import datetime
 import pymongo
 
-OFF_LINE_MONGO = '10.12.0.30'
-OFF_LINE_MONGO_PORT = 27017
+
+# 国内 MongoDB 连接信息
+MONGODB_HOST = 'dds-bp1d09d4b278ceb41.mongodb.rds.aliyuncs.com'
+MONGODB_PORT = 3717
+USER = 'search'
+PASSWORD = 'ba3Re3ame+Wa'
 
 
 def remove_duplicate_data(data):
@@ -112,13 +116,25 @@ if __name__ == '__main__':
                 result[str(cusor_date)] = result[str(cusor_date - datetime.timedelta(days=1))] * 1.0
             cusor_date += datetime.timedelta(days=1)
 
-        client = pymongo.MongoClient(OFF_LINE_MONGO, OFF_LINE_MONGO_PORT)
-        collection = client['research']['tmall_brand_index']
+        # client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT)
+        # db = client['cr_data']
+        # db.authenticate(USER, PASSWORD)
+        # collection = db['tmall_brand_index']
 
+        # for i in result:
+        #     _id = shopId
+        #     put_data = {'shopName': shopName, 'date': i, 'index': result[i]}
+        #     collection.update_one({'_id':_id}, {'$set': put_data}, upsert=True)
+
+        # save to hive
+
+        hive_data = []
         for i in result:
-            _id = shopId
-            put_data = {'shopName': shopName, 'date': i, 'index': result[i]}
-            collection.update_one({'_id':_id}, {'$set': put_data}, upsert=True)
+            hive_data.append({'shopId': shopId, 'shopName': shopName, 'date': i, 'index': result[i]})
+
+        sc.parallelize(hive_data).toDF().write.saveAsTable('abc.tmall_brand_index')
+
+
 
 
 
