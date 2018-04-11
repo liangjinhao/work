@@ -382,10 +382,10 @@ class HBaseSync(threading.Thread):
                 # hbase.client.keyvalue.maxsize 默认是10M，超出这个值则设置为None
                 if len(var) < 10 * 1024 * 1024:
                     mutations.append(Hbase.Mutation(column=key, value=var))
-                    self.logger.warning('_id为 ' + data['_id'] + ' 的数据的 ' + str(columns[item]) + ' 字段的值大小超过了'
-                                        + ' HBase 默认规定的键值10M限制，先已经置 None 替代该值')
                 else:
                     mutations.append(Hbase.Mutation(column=key, value=bytes(str(None), encoding="utf8")))
+                    self.logger.warning('_id为 ' + data['_id'] + ' 的数据的 ' + str(item) + ' 字段的值大小超过了'
+                                        + ' HBase 默认规定的键值10M限制，先已经置 None 替代该值')
             self.client.mutateRow(table_name, row_key, mutations, {})
             self.logger.debug(str(QUEUE.qsize()) + ' 插入到 HBase ' + str(data))
         elif op == 'd':
