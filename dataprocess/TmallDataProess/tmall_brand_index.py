@@ -72,11 +72,6 @@ if __name__ == '__main__':
         .getOrCreate()
     sparkSession.sparkContext.setLogLevel('WARN')
 
-    shopid_to_stock_code = ''
-    with open('file') as f:
-        for line in f:
-
-
     df = sparkSession.sql("SELECT pid, shopId, shopName, price, priceSales, fetchedAt "
                           "FROM spider_data.tmall_product "
                           "WHERE pid is not null AND shopId is not null AND price is not null "
