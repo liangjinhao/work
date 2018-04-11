@@ -118,7 +118,7 @@ if __name__ == '__main__':
         for i in result:
             _id = shopId
             put_data = {'shopName': shopName, 'date': i, 'index': result[i]}
-            collection.update_one(_id, {'$set': put_data}, upsert=True)
+            collection.update_one({'_id':_id}, {'$set': put_data}, upsert=True)
 
 
 
