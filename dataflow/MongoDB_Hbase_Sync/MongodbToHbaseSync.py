@@ -265,7 +265,7 @@ class MongodbIncrementalSync(threading.Thread):
                                     except Exception:
                                         self.logger.error(traceback.format_exc())
 
-                            QUEUE.safe_put(new_doc)
+                            safe_put(new_doc)
 
                             self.logger.debug(str(QUEUE.qsize()) + ' 读出 MongoDB ' + new_doc['_id'])
 
