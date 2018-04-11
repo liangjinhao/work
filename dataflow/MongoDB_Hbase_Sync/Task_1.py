@@ -72,16 +72,9 @@ if __name__ == '__main__':
         }
     }
 
-    df = connector.get_df_from_hbase(catelog)
-    df.show(50, False)
-    print('======count=====', df.count())
-
-    fileName_rdd = df.rdd.repartition(1000).cache()
-    print("load file count: ", fileName_rdd.count())
-    result_rdd = fileName_rdd.mapPartitions(lambda x: save_to_hive(x))
-
+    df = connector.get_df_from_hbase(catelog, repartition_num=1000).rdd.cache()
+    print('======load file count=====', df.count())
+    result_rdd = df.mapPartitions(lambda x: save_to_hive(x))
     result_df = spark_session.createDataFrame(result_rdd, ['id', 'text', 'index'])
-
     result_df.write.saveAsTable('abc.hb_text_oss_file', mode='overwrite')
-
-    print('======count=====', spark_session.table('abc.hb_text_oss_file').count())
+    #print('======count=====', spark_session.table('abc.hb_text_oss_file').count())
