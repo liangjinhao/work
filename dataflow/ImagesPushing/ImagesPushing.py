@@ -11,7 +11,7 @@ import Utils
 该脚本采用Spark读取HBase的img_data表里的数据，并通过POST请求发送到Solr服务上去
 """
 
-POST_URL = 'http://10.24.235.15:8080/solrweb/chartIndexByUpdate'  # Solr接受post请求的地址
+POST_URL = 'http://10.165.101.72:8086/chart_update'  # Solr接受post请求的地址
 
 
 def send(x):
