@@ -1,9 +1,7 @@
-import datetime
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SQLContext, SparkSession
 import datetime
 import pymongo
-
 
 # 国内 MongoDB 连接信息
 MONGODB_HOST = 'dds-bp1d09d4b278ceb41.mongodb.rds.aliyuncs.com'
@@ -12,57 +10,91 @@ USER = 'search'
 PASSWORD = 'ba3Re3ame+Wa'
 
 
-def remove_duplicate_data(data):
-    """
-    删除同一天里 pid 重复的数据，调整 price
-    :param data:
-    :return:
-    """
-    product_time_price = dict()
-    for x in data:
-        pid = x['pid']
-        time = x['fetchedAt']
-        price = x['price']
-        priceSales = x['priceSales']
-        if pid not in product_time_price:
-            product_time_price[pid] = (time, price) if priceSales == 0.0 else (time, priceSales)
-        else:
-            if product_time_price[pid][0] < time:
-                product_time_price[pid] = (time, price) if priceSales == 0.0 else (time, priceSales)
+def remove_duplicate_data(x):
     result = []
-    for y in product_time_price:
-        item = {
-            'pid': y,
-            'date': product_time_price[y][0].split(' ')[0],
-            'price': product_time_price[y][1]
-        }
-        result.append(item)
+    for data in x:
+        pid = data[0]
+        info = data[1]
+        shopId = ''
+        shopName = ''
+        data_set = dict()
+        for i in info:
+            shopId = i['shopId']
+            shopName = i['shopName']
+            price = i['price']
+            priceSales = i['priceSales']
+            fetchedAt = i['fetchedAt']
+            date = fetchedAt.split(' ')[0]
+            if date not in data_set:
+                normed_price = price if priceSales == 0.0 else priceSales
+                data_set[date] = {'price': normed_price, 'fetchedAt': fetchedAt}
+            elif date in data_set and data_set[date]['fetchedAt'] < fetchedAt:
+                data_set[date]['fetchedAt'] = fetchedAt
+                normed_price = price if priceSales == 0.0 else priceSales
+                data_set[date]['price'] = normed_price
+        for i in data_set:
+            result.append(
+                {'pid': pid, 'shopId': shopId, 'shopName': shopName, 'price': data_set[i]['price'], 'date': i})
     return result
 
 
-def fun1(x):
-    date1 = x['date']
-    products1 = x['products']['data']
-    date2 = x['date2']
-    products2 = x['products2']['data']
-    dataset = dict()
-    for i in products1:
-        if i['pid'] not in dataset:
-            dataset[i['pid']] = {}
-        dataset[i['pid']][i['date']] = i['price']
-    for i in products2:
-        if i['pid'] not in dataset:
-            dataset[i['pid']] = {}
-        dataset[i['pid']][i['date']] = i['price']
-    sum = 0
-    num = 0
-    print(dataset)
-    for i in dataset:
-        if len(dataset[i]) == 2:
-            sum += dataset[i][date2]/dataset[i][date1] if dataset[i][date1] != 0.0 else 1
-            num += 1
-    ratio = sum/num
-    return {'date': date2, 'ratio': ratio}
+def cacul_brand_index(x):
+    result = []
+    for data in x:
+        shopId = data[0]
+        info = data[1]
+        shopName = ''
+        data_set = dict()
+        earliest_day = ''
+        lastest_day = ''
+        for i in info:
+            shopName = i['shopName']
+            date = i['date']
+            pid = i['pid']
+            price = i['price']
+            if earliest_day == '' or earliest_day > date:
+                earliest_day = date
+            if lastest_day == '' or lastest_day < date:
+                lastest_day = date
+            if date not in data_set:
+                data_set[date] = {pid: price}
+            else:
+                data_set[date][pid] = price
+        result.append({'shopId': shopId, 'shopName': shopName, 'date': earliest_day, 'ratio': 1.0})
+        cursor_day = datetime.datetime.strptime(earliest_day, '%Y-%m-%d').date() + datetime.timedelta(days=1)
+        while str(cursor_day) <= lastest_day:
+            if str(cursor_day) in data_set and str(cursor_day - datetime.timedelta(days=1)) in data_set:
+                last_day_data = data_set[str(cursor_day - datetime.timedelta(days=1))]
+                today_data = data_set[str(cursor_day)]
+                sum = 0
+                num = 0
+                for i in today_data:
+                    if i in last_day_data:
+                        sum += today_data[i] / last_day_data[i] if last_day_data[i] != 0 else 1
+                        num += 1
+                ratio = sum / num if num != 0 else 1.0
+                result.append({'shopId': shopId, 'shopName': shopName, 'date': str(cursor_day), 'ratio': ratio})
+            else:
+                result.append({'shopId': shopId, 'shopName': shopName, 'date': str(cursor_day), 'ratio': 1.0})
+            cursor_day += datetime.timedelta(days=1)
+    return result
+
+
+def write_to_mongo(x):
+    for data in x:
+        client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT)
+        db = client['cr_data']
+        db.authenticate(USER, PASSWORD)
+        collection = db['tmall_brand_index']
+        _id = data['stock_code']
+        op = {
+            'date': data['date'],
+            'ratio': data['ratio'],
+            'shopId': data['shopId'],
+            'shopName': data['shopName'],
+            'brand': data['brand']
+        }
+        collection.update_one({'_id': _id}, {'$set': op}, upsert=True)
 
 
 if __name__ == '__main__':
@@ -78,90 +110,21 @@ if __name__ == '__main__':
 
     df = sparkSession.sql("SELECT pid, shopId, shopName, price, priceSales, fetchedAt "
                           "FROM spider_data.tmall_product "
-                          "WHERE pid is not null AND shopId is not null AND price is not null "
-                          "AND priceSales is not null AND fetchedAt is not null ")
+                          "WHERE pid is not null AND shopId is not null AND shopName is not null "
+                          "AND price is not null AND priceSales is not null AND fetchedAt is not null ")
 
-    df.registerTempTable('table1')
-    shopId_df = sparkSession.sql("SELECT DISTINCT(shopId), shopName FROM table1")
-    shopId_list = shopId_df.rdd.map(lambda x: (x['shopId'], x['shopName'])).collect()
+    rdd1 = df.rdd.groupBy(lambda x: x['pid']).mapPartitions(lambda x: remove_duplicate_data(x))
+    rdd2 = rdd1.groupBy(lambda x: x['shopId']).mapPartitions(lambda x: cacul_brand_index(x))
 
-    for shopId, shopName in shopId_list:
-        shop_df_raw = sparkSession.sql("SELECT pid, price, priceSales, fetchedAt FROM table1 WHERE shopId = " + shopId)
-        shop_df = shop_df_raw.rdd.mapPartitions(lambda x: remove_duplicate_data(x)).toDF()
-        shop_df.registerTempTable('shop_table')
-        date_list = sparkSession.sql("SELECT DISTINCT(date) FROM shop_table ORDER BY date").rdd.map(lambda x: x[0]).collect()
+    shop_index_df = rdd2.toDF()
+    shop_index_df.registerTempTable('table1')
+    shop_mappings_df = sparkSession.sql("SELECT * FROM abc.shop_mappings")
+    shop_mappings_df.registerTempTable('table2')
 
-        shop_daily_df = shop_df.rdd.groupBy(lambda x: x['date']).toDF(['date', 'products'])
-        shop_daily_df.registerTempTable('shop_daily1')
-        shop_daily_df2 = sparkSession.sql('SELECT date as date2, products as products2 FROM shop_daily1')
-        shop_daily_df2.registerTempTable('shop_daily2')
+    result_df = sparkSession.sql("SELECT table1.date, table1.ratio, table1.shopId, table1.shopName, "
+                                 "table2.brand table2.stock_code"
+                                 "FROM table1 JOIN table2 WHERE table1.shopId = table2.shopId")
 
-        shop_day_pair_df = sparkSession.sql("SELECT * FROM shop_daily1 JOIN shop_daily2 ON DATE_ADD(shop_daily1.date,1)= shop_daily2.date2")
-        shop_daily_ratio = shop_day_pair_df.rdd.map(lambda x: fun1(x)).collect()
+    result_df.show()
 
-        ratio_dict = dict()
-        for i in shop_daily_ratio:
-            ratio_dict[i['date']] = i['ratio']
-
-        earlist_day = datetime.datetime.strptime(date_list[0], '%Y-%m-%d').date()
-        latest_day = datetime.datetime.strptime(date_list[-1], '%Y-%m-%d').date()
-        cusor_date = earlist_day
-        result = {}
-        while cusor_date <= latest_day:
-            if cusor_date == earlist_day:
-                result[str(cusor_date)] = 1.0
-            elif str(cusor_date) in ratio_dict and str(cusor_date - datetime.timedelta(days=1)) in ratio_dict:
-                result[str(cusor_date)] = result[str(cusor_date - datetime.timedelta(days=1))] * ratio_dict[str(cusor_date)]
-            else:
-                result[str(cusor_date)] = result[str(cusor_date - datetime.timedelta(days=1))] * 1.0
-            cusor_date += datetime.timedelta(days=1)
-
-        # client = pymongo.MongoClient(MONGODB_HOST, MONGODB_PORT)
-        # db = client['cr_data']
-        # db.authenticate(USER, PASSWORD)
-        # collection = db['tmall_brand_index']
-
-        # for i in result:
-        #     _id = shopId
-        #     put_data = {'shopName': shopName, 'date': i, 'index': result[i]}
-        #     collection.update_one({'_id':_id}, {'$set': put_data}, upsert=True)
-
-        # save to hive
-
-        hive_data = []
-        for i in result:
-            hive_data.append({'shopId': shopId, 'shopName': shopName, 'date': i, 'index': result[i]})
-
-        sc.parallelize(hive_data).toDF().write.saveAsTable('abc.tmall_brand_index')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    result_df.rdd.foreachPartition(lambda x: write_to_mongo(x))
