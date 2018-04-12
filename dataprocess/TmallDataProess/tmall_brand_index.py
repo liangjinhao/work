@@ -60,7 +60,8 @@ def cacul_brand_index(x):
                 data_set[date] = {pid: price}
             else:
                 data_set[date][pid] = price
-        result.append({'shopId': shopId, 'shopName': shopName, 'date': earliest_day, 'ratio': 1.0})
+        result.append({'shopId': shopId, 'shopName': shopName, 'date': earliest_day, 'ratio': 1.0, 'index': 1.0})
+        last_day_index = 1.0
         cursor_day = datetime.datetime.strptime(earliest_day, '%Y-%m-%d').date() + datetime.timedelta(days=1)
         while str(cursor_day) <= lastest_day:
             if str(cursor_day) in data_set and str(cursor_day - datetime.timedelta(days=1)) in data_set:
@@ -73,9 +74,13 @@ def cacul_brand_index(x):
                         sum += today_data[i] / last_day_data[i] if last_day_data[i] != 0 else 1
                         num += 1
                 ratio = sum / num if num != 0 else 1.0
-                result.append({'shopId': shopId, 'shopName': shopName, 'date': str(cursor_day), 'ratio': ratio})
+                index = last_day_index * ratio
+                last_day_index = index
+                result.append(
+                    {'shopId': shopId, 'shopName': shopName, 'date': str(cursor_day), 'ratio': ratio, 'index': index})
             else:
-                result.append({'shopId': shopId, 'shopName': shopName, 'date': str(cursor_day), 'ratio': 1.0})
+                result.append(
+                    {'shopId': shopId, 'shopName': shopName, 'date': str(cursor_day), 'ratio': 1.0, 'index': last_day_index})
             cursor_day += datetime.timedelta(days=1)
     return result
 
@@ -86,13 +91,16 @@ def write_to_mongo(x):
         db = client['cr_data']
         db.authenticate(USER, PASSWORD)
         collection = db['tmall_brand_index']
-        _id = data['stock_code']
+        _id = data['date'] + '_' + data['stock_code']
         op = {
             'date': data['date'],
             'ratio': data['ratio'],
+            'index': data['index'],
             'shopId': data['shopId'],
             'shopName': data['shopName'],
-            'brand': data['brand']
+            'brand': data['brand'],
+            'stock_code': data['stock_code'],
+            'last_updated': datetime.datetime.now()
         }
         collection.update_one({'_id': _id}, {'$set': op}, upsert=True)
 
@@ -121,10 +129,10 @@ if __name__ == '__main__':
     shop_mappings_df = sparkSession.sql("SELECT * FROM abc.shop_mappings")
     shop_mappings_df.registerTempTable('table2')
 
-    result_df = sparkSession.sql("SELECT table1.date, table1.ratio, table1.shopId, table1.shopName, "
-                                 "table2.brand table2.stock_code"
-                                 "FROM table1 JOIN table2 WHERE table1.shopId = table2.shopId")
+    result_df = sparkSession.sql("SELECT table1.date, table1.ratio, table1.index, table1.shopId, table1.shopName, "
+                                 "table2.brand, table2.stock_code "
+                                 "FROM table1 JOIN table2 ON table1.shopId = table2.shopId")
 
-    result_df.show()
+    result_df.show(100)
 
     result_df.rdd.foreachPartition(lambda x: write_to_mongo(x))
