@@ -54,7 +54,7 @@ class ScrawlImagesConsumer(threading.Thread):
         self.hbase_table = b'news_img_data'  # 写入的Hbase的表名
 
         self.redis_ip = '10.174.97.43'
-        self.redis_port = 6379
+        self.redis_port = 8801
         self.redis_password = 'e65f63bb02d3'
         self.redis_queue = 'oss_img_tag_queue'
 

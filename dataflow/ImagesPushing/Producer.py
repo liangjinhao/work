@@ -33,7 +33,7 @@ class ScrawlImagesProducer(threading.Thread):
         self.queue_name = 'scrawl_images'  # RabbitMQ 送入的队列名字
 
         self.redis_ip = '10.174.97.43'  # Redis IP地址
-        self.redis_port = 6379  # Redis 端口
+        self.redis_port = 8801  # Redis 端口
         self.redis_password = 'e65f63bb02d3'
         self.redis_queue_name = 'oss_img_tag_queue'  # Redis 取出数据的队列
 
