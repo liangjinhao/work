@@ -55,6 +55,7 @@ class ScrawlImagesConsumer(threading.Thread):
 
         self.redis_ip = '10.174.97.43'
         self.redis_port = 6379
+        self.redis_password = 'e65f63bb02d3'
         self.redis_queue = 'oss_img_tag_queue'
 
         self.post_url = 'http://10.165.101.72:8086/chart_update'
@@ -228,14 +229,14 @@ class ScrawlImagesConsumer(threading.Thread):
             response = requests.post(self.post_url, json=[img_json])
             if response.status_code != 200:
                 logger_consumer.error("推送 Solr 返回响应代码 " + str(response.status_code) + "，数据 rowKey:" + row['rowKey'])
-                redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
+                redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port, password=self.redis_password)
                 put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
                 redis_client.rpush(self.redis_queue, str(put_data))
             else:
                 logger_consumer.info("推送 Solr 完成， rowKey:" + row['rowKey'])
         except Exception as e:
             logger_consumer.error("推送 Solr 异常： " + str(e) + "，数据 rowKey:" + row['rowKey'])
-            redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port)
+            redis_client = redis.Redis(host=self.redis_ip, port=self.redis_port, password=self.redis_password)
             put_data = {'url': row['img_url'], 'oss_url': row['img_oss']}
             redis_client.rpush(self.redis_queue, str(put_data))
 
