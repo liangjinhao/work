@@ -255,16 +255,14 @@ class ScrawlImagesConsumer(threading.Thread):
 
         body = str(body, encoding='utf-8') if isinstance(body, bytes) else body
         body = json.loads(body)
-        url = hashlib.md5(str(body['url']).encode()).hexdigest()
         if body['ok']:
             image_type = str(body['result'])
         else:
             image_type = str([])
-        data = {'url': url, 'img_type': image_type}
-
+        data = {'url': body['url'], 'img_type': image_type}
         self.write_hbase([data], self.hbase_table, self.thrift_ip, self.thrift_port)
-
-        img = self.get_hbase_row(url)
+        row_key = hashlib.md5(str(body['url']).encode()).hexdigest()
+        img = self.get_hbase_row(row_key)
         self.send(img)
 
         # To process body
