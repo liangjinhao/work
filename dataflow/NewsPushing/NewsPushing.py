@@ -199,7 +199,8 @@ def send(x):
         news_json['brief'] = row['dese']
 
         if 'title' in row and row['title'] != '':
-            news_json['doc_feature'] = hashlib.md5(bytes(row['title'], encoding="utf-8")).hexdigest()
+            tmp = row['title'].replace(' ', '').replace('：', '').replace(':', '').replace('\t', '')
+            news_json['doc_feature'] = hashlib.md5(bytes(tmp, encoding="utf-8")).hexdigest()
 
         if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
             try:
