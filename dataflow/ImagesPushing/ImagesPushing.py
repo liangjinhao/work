@@ -59,6 +59,8 @@ def send(x):
         title = row['title'] if 'title' in row else ''
         url = row['url'] if 'url' in row else ''
 
+        if img_oss is None:
+            continue
         if img_title is None:
             img_title = ''
         if img_type is None:
