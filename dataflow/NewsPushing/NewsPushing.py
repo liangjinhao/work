@@ -211,9 +211,10 @@ def send(x):
         news_json['url'] = row['url']
         news_json['tags'] = row['tag']
 
-        domain = news_json['url'].replace('https://', '').replace('http://', '').replace('www.', '').split('/')
-        if domain[0] in site_ranks:
-            news_json['doc_score'] = site_ranks[domain[0]] if site_ranks[domain[0]] != 0.0 else 1.0
+        if news_json['url'] is not None:
+            domain = news_json['url'].replace('https://', '').replace('http://', '').replace('www.', '').split('/')
+            if domain[0] in site_ranks:
+                news_json['doc_score'] = site_ranks[domain[0]] if site_ranks[domain[0]] != 0.0 else 1.0
 
         try:
             news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
