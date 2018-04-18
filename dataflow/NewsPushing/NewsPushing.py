@@ -193,7 +193,7 @@ def send(x):
         news_json['crawl_time'] = row['crawl_time']
         news_json['brief'] = row['dese']
 
-        if 'title' in row and row['title'] != '':
+        if 'title' in row and row['title'] != '' and row['title'] is not None:
             tmp = row['title'].replace(' ', '').replace('：', '').replace(':', '').replace('\t', '')
             news_json['doc_feature'] = hashlib.md5(bytes(tmp, encoding="utf-8")).hexdigest()
 
