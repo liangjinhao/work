@@ -8,6 +8,7 @@ import re
 import json
 import hashlib
 import ast
+import site_rank
 
 
 """
@@ -144,13 +145,7 @@ def send(x):
 
     result = []
 
-    site_rank = dict()
-
-    with open('site_rank.txt', 'r') as f:
-        for line in f:
-            site_to_rank = line.strip().split('\t')
-            if len(site_to_rank) == 2:
-                site_rank[site_to_rank[0]] = site_to_rank[1]
+    site_ranks = site_rank.site_ranks
 
     for row in x:
 
@@ -217,8 +212,8 @@ def send(x):
         news_json['tags'] = row['tag']
 
         domain = news_json['url'].replace('https://', '').replace('http://', '').replace('www.', '').split('/')
-        if domain[0] in site_rank:
-            news_json['doc_score'] = site_rank[domain[0]]
+        if domain[0] in site_ranks:
+            news_json['doc_score'] = site_ranks[domain[0]] if site_ranks[domain[0]] != 0.0 else 1.0
 
         try:
             news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
@@ -232,8 +227,6 @@ def send(x):
             except:
                 news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
                 news_json['time'] = 0
-
-        print(news_json)
 
         try:
             for url in POST_URLS:
@@ -313,15 +306,14 @@ if __name__ == '__main__':
 
     correct_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = true").first()[0]
     wrong_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = false").first()[0]
-    last_push_time = sparkSession.sql("SELECT PUSH_TIME from res_table ORDER BY PUSH_TIME DESC LIMIT 1").first()[0]
+    first_push_time = sparkSession.sql("SELECT PUSH_TIME from res_table ORDER BY PUSH_TIME ASC LIMIT 1").first()[0]
 
     print('======推送完成=======')
     print('成功数目：', correct_num, correct_num/(correct_num+wrong_num))
     print('失败数目：', wrong_num, wrong_num/(correct_num+wrong_num))
-    df.show(result_df)
 
     result_df.write.saveAsTable('abc.news_data_pushing', mode='append', partitionBy='PUSH_TIME')
 
-    sc.parallelize([('start_time', last_push_time)]).toDF(['key', 'value']).write.mode(
+    sc.parallelize([('start_time', first_push_time)]).toDF(['key', 'value']).write.mode(
         'overwrite').format('json').save('hdfs://10.27.71.108:8020/spark_data/news_pushing.conf')
 
