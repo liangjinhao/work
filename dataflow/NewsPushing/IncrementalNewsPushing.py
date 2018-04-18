@@ -12,6 +12,7 @@ from logging.handlers import RotatingFileHandler
 import traceback
 import hashlib
 import ast
+import site_rank
 
 
 """
@@ -94,13 +95,7 @@ def send(x):
     :return:
     """
 
-    site_rank = dict()
-
-    with open('site_rank.txt', 'r') as f:
-        for line in f:
-            site_to_rank = line.strip().split('\t')
-            if len(site_to_rank) == 2:
-                site_rank[site_to_rank[0]] = site_to_rank[1]
+    site_ranks = site_rank.site_ranks
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
 
@@ -162,8 +157,8 @@ def send(x):
             news_json['tags'] = row['tag'] if 'tag' in row else ''
 
             domain = news_json['url'].replace('https://', '').replace('http://', '').replace('www.', '').split('/')
-            if domain[0] in site_rank:
-                news_json['doc_score'] = site_rank[domain[0]]
+            if domain[0] in site_ranks:
+                news_json['doc_score'] = site_ranks[domain[0]] if site_ranks[domain[0]] != 0.0 else 1.0
 
             try:
                 news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
@@ -210,6 +205,10 @@ if __name__ == '__main__':
     start_queue_size = r.llen(REDIS_QUEUE)
     queue_out_count = 0
 
+    # post_url = '/watch'
+    # post_interval = 10
+    # post_time = time.time()
+
     while True:
         rowkey = r.lpop(name=REDIS_QUEUE)
 
@@ -217,6 +216,13 @@ if __name__ == '__main__':
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
             send([news])
+
+            # if time.time() - post_time > post_interval:
+            #     requests.post(post_url,
+            #                   data={
+            #                       'name': 'news_pushing',
+            #                       'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+            #     post_time = time.time()
 
             queue_out_count += 1
             if time.time() - start_time > count_interval:
