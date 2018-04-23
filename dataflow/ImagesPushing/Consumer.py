@@ -266,6 +266,14 @@ class ScrawlImagesConsumer(threading.Thread):
         img = self.get_hbase_row(row_key)
         self.send(img)
 
+        try:
+            requests.post('http://10.168.117.133:2999/watch',
+                          data={
+                              'name': 'charts_pushing',
+                              'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+        except:
+            pass
+
         # To process body
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

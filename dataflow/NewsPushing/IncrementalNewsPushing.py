@@ -205,9 +205,9 @@ if __name__ == '__main__':
     start_queue_size = r.llen(REDIS_QUEUE)
     queue_out_count = 0
 
-    # post_url = '/watch'
-    # post_interval = 10
-    # post_time = time.time()
+    post_url = 'http://10.168.117.133:2999/watch'
+    post_interval = 10  # 每 10s 发送一次
+    post_time = time.time()
 
     while True:
         rowkey = r.lpop(name=REDIS_QUEUE)
@@ -217,12 +217,15 @@ if __name__ == '__main__':
             news = get_hbase_row(rowkey)
             send([news])
 
-            # if time.time() - post_time > post_interval:
-            #     requests.post(post_url,
-            #                   data={
-            #                       'name': 'news_pushing',
-            #                       'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
-            #     post_time = time.time()
+            if time.time() - post_time > post_interval:
+                try:
+                    requests.post(post_url,
+                                  data={
+                                      'name': 'news_pushing',
+                                      'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+                except:
+                    pass
+                post_time = time.time()
 
             queue_out_count += 1
             if time.time() - start_time > count_interval:
