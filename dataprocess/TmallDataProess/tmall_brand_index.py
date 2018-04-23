@@ -106,7 +106,7 @@ def write_to_mongo(x):
 
 
 if __name__ == '__main__':
-    conf = SparkConf().setAppName("TmallDataProcess")
+    conf = SparkConf().setAppName("Tmall_Brand_Index")
     sc = SparkContext(conf=conf)
     sqlContext = SQLContext(sc)
 
