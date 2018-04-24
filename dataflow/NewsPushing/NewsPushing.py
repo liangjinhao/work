@@ -226,8 +226,9 @@ def send(x):
                 news_json['time'] = int(datetime.datetime.strptime(t, '%Y-%m-%d %H:%M:%S').strftime('%s'))
                 news_json['publish_time'] = t
             except:
-                news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
-                news_json['time'] = 0
+                continue
+                # news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
+                # news_json['time'] = 0
 
         try:
             for url in POST_URLS:
