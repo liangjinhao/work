@@ -296,7 +296,7 @@ if __name__ == '__main__':
 
         df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
                                          stop_time=stopTime,
-                                         repartition_num=None, cached=True)
+                                         repartition_num=1000, cached=True)
     df.show(10)
     print('======count=======', df.count())
     result_rdd = df.rdd.foreachPartition(lambda x: send(x))
