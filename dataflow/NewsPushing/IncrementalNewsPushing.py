@@ -161,6 +161,9 @@ def send(x):
                 news_json['doc_score'] = site_ranks[domain[0]] if site_ranks[domain[0]] != 0.0 else 1.0
 
             try:
+                # 时间早于 2000 年的不推送
+                if row['publish_time'][0:4] < '2000':
+                    continue
                 news_json['time'] = int(datetime.datetime.strptime(row['publish_time'], '%Y-%m-%d %H:%M:%S')
                                         .strftime('%s'))
                 news_json['publish_time'] = row['publish_time']
