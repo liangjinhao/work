@@ -214,7 +214,7 @@ if __name__ == '__main__':
     post_interval = 10  # 每 10s 发送一次
     post_time = time.time()
 
-    hs = hstc()
+    hs = hstc.Hash()
 
     while True:
         rowkey = r.lpop(name=REDIS_QUEUE)
