@@ -9,7 +9,7 @@ import json
 import hashlib
 import ast
 import site_rank
-
+import hstc
 
 """
 该脚本采用Spark读取HBase的news_data表里的数据，并通过POST请求发送到Solr服务上去
@@ -147,6 +147,8 @@ def send(x):
 
     site_ranks = site_rank.site_ranks
 
+    hs = hstc()
+
     for row in x:
 
         news_json = dict({
@@ -193,9 +195,9 @@ def send(x):
         news_json['crawl_time'] = row['crawl_time']
         news_json['brief'] = row['dese']
 
-        if 'title' in row and row['title'] != '' and row['title'] is not None:
-            tmp = row['title'].replace(' ', '').replace('：', '').replace(':', '').replace('\t', '')
-            news_json['doc_feature'] = hashlib.md5(bytes(tmp, encoding="utf-8")).hexdigest()
+        if 'title' in row and row['title'] != '' and row['title'] is not None and \
+                'content' in row and row['content'] != '' and row['content'] is not None:
+            news_json['doc_feature'] = hs.get_hash(row['title'], news_json['content'])[0]
 
         if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
             try:

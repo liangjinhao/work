@@ -13,6 +13,7 @@ import traceback
 import hashlib
 import ast
 import site_rank
+import hstc
 
 
 """
@@ -88,7 +89,7 @@ def post(url, rowkey, news_json, write_back_redis=True):
             redis_client.rpush(REDIS_QUEUE, rowkey)
 
 
-def send(x):
+def send(x, hs):
     """
     将数据作对应字段转换后 post 到 Solr 服务
     :param x:
@@ -138,9 +139,9 @@ def send(x):
             news_json['crawl_time'] = row['crawl_time'] if 'crawl_time' in row else ''
             news_json['brief'] = row['dese'] if 'dese' in row else ''
 
-            if 'title' in row and row['title'] != '':
-                tmp = row['title'].replace(' ', '').replace('：', '').replace(':', '').replace('\t', '')
-                news_json['doc_feature'] = hashlib.md5(bytes(tmp, encoding="utf-8")).hexdigest()
+            if 'title' in row and row['title'] != '' and row['title'] is not None and \
+                    'content' in row and row['content'] != '' and row['content'] is not None:
+                news_json['doc_feature'] = hs.get_hash(row['title'], news_json['content'])[0]
 
             if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
                 try:
@@ -213,13 +214,15 @@ if __name__ == '__main__':
     post_interval = 10  # 每 10s 发送一次
     post_time = time.time()
 
+    hs = hstc()
+
     while True:
         rowkey = r.lpop(name=REDIS_QUEUE)
 
         if rowkey:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
-            send([news])
+            send([news], hs)
 
             if time.time() - post_time > post_interval:
                 try:
