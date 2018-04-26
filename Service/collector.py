@@ -193,7 +193,7 @@ class Collector:
             # 英文的识别很差，先统一看成主体
             if re.match(r'[a-zA-Z]+', var['term']):
                 crf_result[i]['type'] = 'subject1'
-                final_result["data"].append({'term': var['term'], 'type': 'subject'})
+                final_result["data"].append({'term': var['term'], 'type': 'subject1'})
             else:
                 final_result["data"].append({'term': var['term'], 'type': var['type']})
 
