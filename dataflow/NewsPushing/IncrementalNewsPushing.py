@@ -27,7 +27,7 @@ REDIS_PORT = 8801
 REDIS_PASSWORD = "e65f63bb02d3"
 REDIS_QUEUE = 'index_pending_queue'
 
-THRIFT_IP = '10.27.71.108'
+THRIFT_IP = '10.27.68.197'
 THRIFT_PORT = 9099
 HBASE_TABLE_NAME = b'news_data'
 
@@ -35,6 +35,13 @@ HBASE_TABLE_NAME = b'news_data'
 # News Product: http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news
 
 POST_URLS = ['http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
+
+# Thrift Client
+transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
+transport = TTransport.TBufferedTransport(transport)
+protocol = TBinaryProtocol.TBinaryProtocol(transport)
+client = Hbase.Client(protocol)
+transport.open()
 
 
 def get_hbase_row(rowkey):
@@ -44,11 +51,6 @@ def get_hbase_row(rowkey):
     :return:
     """
     rowkey = bytes(rowkey, encoding='utf-8') if isinstance(rowkey, str) else rowkey
-    transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
-    transport = TTransport.TBufferedTransport(transport)
-    protocol = TBinaryProtocol.TBinaryProtocol(transport)
-    client = Hbase.Client(protocol)
-    transport.open()
     row = client.getRow(HBASE_TABLE_NAME, rowkey, attributes=None)
     if len(row) > 0:
         result = dict()
@@ -122,6 +124,7 @@ def send(x, hs):
                 "tags": "",
                 'doc_score': 1.0,  # 网站 page rank 分值
                 "time": 0,
+                "tf_idf_words": ''
             })
 
             news_json['id'] = row['rowKey']
@@ -141,7 +144,9 @@ def send(x, hs):
 
             if 'title' in row and row['title'] != '' and row['title'] is not None and \
                     'content' in row and row['content'] != '' and row['content'] is not None:
-                news_json['doc_feature'] = hs.get_hash(row['title'], news_json['content'])[0]
+                r = hs.get_hash(row['title'], news_json['content'])
+                news_json['doc_feature'] = r[0]
+                news_json['tf_idf_words'] = ' '.join(r[1])
 
             if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
                 try:
