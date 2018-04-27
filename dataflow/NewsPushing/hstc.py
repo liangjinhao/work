@@ -13,7 +13,7 @@ class Hash():
     def __init__(self):
         # get idf dit
         self.dit = {}
-        with open("../idf_clean.txt", "r") as f:
+        with open("./idf_clean.txt", "r") as f:
             for line in f:
                 line = line.strip("\n").split(",")
                 k = line[0]
@@ -23,16 +23,16 @@ class Hash():
                 else:
                     pass
         f.close()
-        # initialize connection
-        _HOST = '121.40.125.154'
-        _PORT = '50051'
-        conn = grpc.insecure_channel(_HOST + ':' + _PORT)
-        self.client = hanlp_pb2_grpc.GreeterStub(channel=conn)
 
     # 东风分词接口, 对content进行分词
     def run(self, texts):
         # 分词，返回结果
-        response = self.client.segment(
+        # initialize connection
+        _HOST = '10.168.20.246'
+        _PORT = '50051'
+        conn = grpc.insecure_channel(_HOST + ':' + _PORT)
+        client = hanlp_pb2_grpc.GreeterStub(channel=conn)
+        response = client.segment(
             hanlp_pb2.HanlpRequest(text=texts, indexMode=0, nameRecognize=1, translatedNameRecognize=1))
         # TF词频
         dit = {}
@@ -74,12 +74,12 @@ class Hash():
                 keyWords.append([word, -100])
         keyWord = sorted(keyWords, key=lambda x: x[1], reverse=True)
         # 取前８个
-        keyWord = map(lambda x: x[0], keyWord[:8])
+        keyWord = list(map(lambda x: x[0], keyWord[:8]))
         return keyWord
 
     # hash映射函数
     def hash_func(self, x):
-        return int(hashlib.md5(x).hexdigest(), 16)
+        return int(hashlib.md5(bytes(x, 'utf-8')).hexdigest(), 16)
 
     # 获取该文章的hash值
     def get_hash(self, title, content):
