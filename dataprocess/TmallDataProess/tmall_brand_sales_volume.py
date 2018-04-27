@@ -1,8 +1,14 @@
 import datetime
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SQLContext, SparkSession
-import datetime
 import pymongo
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email.utils import COMMASPACE, formatdate
+from email import encoders
+import os
 
 
 # 国内 MongoDB 连接信息
@@ -12,7 +18,77 @@ USER = 'search'
 PASSWORD = 'ba3Re3ame+Wa'
 
 
+class MyEmail:
+    """
+    Use SMTP send emails
+    """
+
+    def __init__(self, smtp_server, fromaddr, toaddr, user, password):
+        """
+        :param smtp_server: smtp server, like 'smtp.gmail.com:587', 'smtp.163.com:25'
+        :param fromaddr: your address
+        :param toaddr: email addresses you send to, like ['Mike@gmail.com', 'Lucy@gmail.com']
+        :param password: your address password
+        """
+        self.fromaddr = fromaddr
+        self.toaddr = toaddr
+        self.server = smtplib.SMTP(smtp_server.split(':')[0], int(smtp_server.split(':')[1]))
+        self.server.ehlo()
+        self.server.starttls()
+        # self.server = smtplib.SMTP_SSL(smtp_server, timeout=10)
+        # self.server.ehlo()
+        self.server.login(user, password)
+
+        self.msg = MIMEMultipart()
+        self.msg['From'] = fromaddr
+        self.msg['To'] = COMMASPACE.join(toaddr)
+        self.msg['Date'] = formatdate(localtime=True)
+
+    def set_subject(self, subject):
+        """
+        set the subject of a email
+        :param subject:
+        :return:
+        """
+        self.msg['Subject'] = subject
+
+    def set_bodytext(self, bodytext):
+        """
+        set the body text of a email
+        :param bodytext: the text of email body
+        :return:
+        """
+        self.msg.attach(MIMEText(bodytext, 'plain'))
+
+    def add_attachment(self, file_list):
+        """
+        add attachments
+        :param file_list: list of the paths of files with its extension
+        :return:
+        """
+        for file_path in file_list:
+            attachment = open(file_path, "rb").read()
+            part = MIMEBase('application', 'octet-stream')
+            part.set_payload(attachment)
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', 'attachment', filename=('utf-8', '', os.path.basename(file_path)))
+            self.msg.attach(part)
+
+    def send(self):
+        """
+        send a email
+        :return:
+        """
+        text = self.msg.as_string()
+        self.server.sendmail(self.fromaddr, self.toaddr, text)
+
+
 def remove_duplicate_data(x):
+    """
+    除去每个店铺的每个商品同一天的重复数据（只选取当日最新的数据，爬虫可能在当日内对一个商品重复爬取）
+    :param x:
+    :return:
+    """
     result = []
     for data in x:
         pid = data[0]
@@ -23,8 +99,8 @@ def remove_duplicate_data(x):
         for i in info:
             shopId = i['shopId']
             shopName = i['shopName']
-            price = i['price']
-            priceSales = i['priceSales']
+            price = i['price']  # 商名标准价格
+            priceSales = i['priceSales']  # 商名其他价格（促销，多个不同配置规格的商品）
             fetchedAt = i['fetchedAt']
             soldQuantity = i['soldQuantity']
             date = fetchedAt.split(' ')[0]
@@ -49,6 +125,11 @@ def remove_duplicate_data(x):
 
 
 def cacul_brand_sales_volume(x):
+    """
+    计算每个店铺当日的销售额
+    :param x:
+    :return:
+    """
     result = []
     for data in x:
         shopId = data[0]
@@ -67,6 +148,51 @@ def cacul_brand_sales_volume(x):
                 data_set[date] += price * soldQuantity
         for i in data_set:
             result.append({'shopId': shopId, 'shopName': shopName, 'date': i, 'sales_volume': data_set[i]})
+    return result
+
+
+def get_notify_shops(x):
+    """
+    计算出店铺的昨天和前天的销售量的浮动的比值，如果该比值大于设置的报告阈值，则将该店铺标记为通知状态。如果该店铺的昨天和前天的数据缺失，则也
+    将该店铺标记为通知状态。
+    :param x:
+    :return:
+    """
+
+    notify_ratio = 0.4  # 当某个店铺的销售额变动大于 30% 时（一般情况是由于爬虫丢失数据），标记为通知状态
+
+    result = []
+    for data in x:
+        shopId = data[0]
+        info = data[1]
+        shopName = ''
+        data_set = dict()
+        for i in info:
+            shopName = i['shopName']
+            date = i['date']
+            sales_volume = i['sales_volume']
+            data_set[date] = sales_volume
+
+        yesterday = str(datetime.datetime.now().date() - datetime.timedelta(days=1))
+        two_days_ago = str(datetime.datetime.now().date() - datetime.timedelta(days=2))
+        if yesterday not in data_set:
+            result.append({
+                "shopId": shopId,
+                "shopName": shopName,
+                "date": yesterday,
+                "sales_change_ratio": 0,
+                "lost_data": True,
+            })
+        elif two_days_ago not in data_set:
+            float_ratio = abs(data_set[yesterday] - data_set[two_days_ago])/(data_set[two_days_ago]+1)
+            if float_ratio > notify_ratio:
+                result.append({
+                    "shopId": shopId,
+                    "shopName": shopName,
+                    "date": yesterday,
+                    "sales_change_ratio": float_ratio,
+                    "lost_data": False,
+                })
     return result
 
 
@@ -100,6 +226,7 @@ if __name__ == '__main__':
         .getOrCreate()
     sparkSession.sparkContext.setLogLevel('WARN')
 
+    # 计算出每日店铺销售额
     df = sparkSession.sql("SELECT pid, shopId, shopName, price, priceSales, soldQuantity, fetchedAt "
                           "FROM spider_data.tmall_product "
                           "WHERE pid is not null AND shopId is not null AND shopName is not null "
@@ -120,5 +247,31 @@ if __name__ == '__main__':
 
     result_df.show(100)
 
+    # 将每日店铺销售额写入 MongoDB
     result_df.rdd.foreachPartition(lambda x: write_to_mongo(x))
+
+    # 将每日需要报告的信息通过邮件发送
+    rdd3 = result_df.rdd.groupBy(lambda x: x['shopId']).mapPartitions(lambda x: get_notify_shops(x))
+    notify_shops = rdd3.collect()
+
+    if len(notify_shops) > 0:
+        table_header = ['date', 'shopId', 'ratio', 'lost', '']
+        row_format = "{:>10}{:>10}{:>10}{:>10}{:>30}"
+        message = row_format.format(*table_header)
+        notify_data = []
+        for i in notify_shops:
+            notify_data.append([i['date'], i['shopId'], format(i['sales_change_ratio'], '.4f'),
+                                str(i['lost_data']), i['shopName']])
+
+        for i in notify_data:
+            message += '\n' + row_format.format(*i)
+
+        yesterday_date = str(datetime.datetime.now().date() - datetime.timedelta(days=1))
+        message = yesterday_date + ' 所有需要注意的店铺状态：\n\n' + message
+        print(message)
+        email = MyEmail('mail.niub.la:465', 'chyan@abcft.com', ['chyan@abcft.com', 'jili@abcft.com'],
+                        'chyan.abcft@niub', 'Ytn3Lvc4')
+        email.set_subject('Tmall 爬虫爬取店铺情况')
+        email.set_bodytext(message)
+        email.send()
 
