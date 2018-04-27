@@ -147,7 +147,7 @@ def send(x):
 
     site_ranks = site_rank.site_ranks
 
-    hs = hstc()
+    hs = hstc.Hash()
 
     for row in x:
 
@@ -170,6 +170,7 @@ def send(x):
             "tags": "",
             'doc_score': 1.0,
             "time": 0,
+            "tf_idf_words": '',
             "PUSH_STATUS": False,
             "PUSH_TIME": '2018-01-01 0:0:0.000000'
         })
@@ -197,7 +198,9 @@ def send(x):
 
         if 'title' in row and row['title'] != '' and row['title'] is not None and \
                 'content' in row and row['content'] != '' and row['content'] is not None:
-            news_json['doc_feature'] = hs.get_hash(row['title'], news_json['content'])[0]
+            r = hs.get_hash(row['title'], news_json['content'])
+            news_json['doc_feature'] = r[0]
+            news_json['tf_idf_words'] = ' '.join(r[1])
 
         if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
             try:
@@ -304,6 +307,12 @@ if __name__ == '__main__':
                                          repartition_num=1000, cached=True)
     df.show(10)
     print('======count=======', df.count())
+
+    # raw_tf_idf = sparkSession.read.text('hdfs://10.27.71.108:8020/spark_data/out/idf_data_all2/')
+    # tf_idf_df = raw_tf_idf.rdd.map(lambda x: (x[0].strip('[]').split(',')[0], x[0].strip('[]').split(',')[1]))\
+    #     .toDF(['word', 'tf_idf'])
+    # tf_idf_df.registerTempTable('tf_idf')
+
     result_rdd = df.rdd.foreachPartition(lambda x: send(x))
 
     result_df = sparkSession.createDataFrame(result_rdd)

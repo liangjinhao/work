@@ -6,7 +6,7 @@ import re
 import hashlib
 
 
-class Hash():
+class Hash:
     """
     Used to get the hash value of the title and content
     """
