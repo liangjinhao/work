@@ -120,15 +120,11 @@ if __name__ == '__main__':
     # [id, title, [keyword1, keyword2, keyword3]]
     tf_idf_keyword = tf_idf_top.map(lambda x: [x[0], x[1][0][2], " ".join([y[0] for y in x[1]])])
 
-    # [id,title+content],空格分割
-    tf_idf_title_content = tf_idf_keyword.map(lambda x: [x[0], x[1] + " " + x[2]])
-
-    # hash映射函数
-    def hash_func(x):
-        return int(hashlib.md5(bytes(x, 'utf-8')).hexdigest(), 16)
-
-    # 生成hash值
-    result_rdd = tf_idf_title_content.map(lambda x: [str(x[0]), hash_func(x[1].replace(" ", "")), x[1].strip()])
+    result_rdd = tf_idf_keyword.map(lambda x: [
+        x[0],
+        hashlib.md5(bytes(x[1] + " " + x[2], 'utf-8')).hexdigest(),
+        x[2]
+    ])
 
     result_df = result_rdd.toDF(['id', 'doc_feature', 'keywords'])
     result_category = {
