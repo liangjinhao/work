@@ -164,13 +164,13 @@ def send(x):
             "first_image_oss": "",  # 资讯的第一个图片oss链接
             "source_url": "",  # laiyuan
             "publish_time": "",  # 2017-12-01 10:20:49
+            "keywords": "",  # tf-idf最高的8个词
             "source_name": "",  # source
             "title": "",  # title
             "url": "",  # url
             "tags": "",
-            'doc_score': 1.0,
+            'doc_score': 1.0,  # 新闻网站的PageRank值
             "time": 0,
-            "tf_idf_words": '',
             "PUSH_STATUS": False,
             "PUSH_TIME": '2018-01-01 0:0:0.000000'
         })
@@ -196,11 +196,7 @@ def send(x):
         news_json['crawl_time'] = row['crawl_time']
         news_json['brief'] = row['dese']
 
-        if 'title' in row and row['title'] != '' and row['title'] is not None and \
-                'content' in row and row['content'] != '' and row['content'] is not None:
-            r = hs.get_hash(row['title'], news_json['content'])
-            news_json['doc_feature'] = r[0]
-            news_json['tf_idf_words'] = ' '.join(r[1])
+        news_json['doc_feature'] = row['doc_feature']
 
         if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
             try:
@@ -210,6 +206,7 @@ def send(x):
             except Exception as e:
                 print(e)
 
+        news_json['keywords'] = row['keywords']
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
@@ -277,8 +274,11 @@ if __name__ == '__main__':
             "content": {"cf": "info", "col": "content", "type": "string"},
             "crawl_time": {"cf": "info", "col": "crawl_time", "type": "string"},
             "dese": {"cf": "info", "col": "dese", "type": "string"},
+            "doc_feature": {"cf": "info", "col": "doc_feature", "type": "string"},
+            "image_list": {"cf": "info", "col": "image_list", "type": "string"},
             "laiyuan": {"cf": "info", "col": "laiyuan", "type": "string"},
             "publish_time": {"cf": "info", "col": "publish_time", "type": "string"},
+            "keywords": {"cf": "info", "col": "keywords", "type": "string"},
             "source": {"cf": "info", "col": "source", "type": "string"},
             "title": {"cf": "info", "col": "title", "type": "string"},
             "url": {"cf": "info", "col": "url", "type": "string"},
@@ -286,25 +286,15 @@ if __name__ == '__main__':
         }
     }
 
-    # 是否从 Hive 里读取数据来重推推送失败的数据。这个主要是在全量推送的过程中如果出现大比例推送失败，推送状态信息会写入Hive，
-    # 然后可以再从Hive里取出这些数据再重新推送。
-    RePush = False
-
     # 指定选取的推送起始时间，格式为 '%Y-%m-%d %H:%M:%S'
     begin = '2018-1-31 11:59:59'
 
-    if RePush:
-        conf = sparkSession.read.text('hdfs://10.27.71.108:8020/spark_data/news_pushing.conf')
-        start_time = json.loads(conf.first()[0])['value']
-        df = sparkSession.sql("SELECT * FROM abc.news_data_pushing WHERE PUSH_STATUS = false AND PUSH_TIME >= '"
-                              + start_time + "'")
-    else:
-        startTime = datetime.datetime.strptime(begin, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
-        stopTime = datetime.datetime.strptime('2050-01-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    startTime = datetime.datetime.strptime(begin, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
+    stopTime = datetime.datetime.strptime('2050-01-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
 
-        df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
-                                         stop_time=stopTime,
-                                         repartition_num=1000, cached=True)
+    df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
+                                     stop_time=stopTime,
+                                     repartition_num=1000, cached=True)
     df.show(10)
     print('======count=======', df.count())
 
@@ -314,7 +304,6 @@ if __name__ == '__main__':
     # tf_idf_df.registerTempTable('tf_idf')
 
     result_rdd = df.rdd.foreachPartition(lambda x: send(x))
-
     result_df = sparkSession.createDataFrame(result_rdd)
 
     # 计算处理后的成功错误条数 比例
@@ -327,9 +316,4 @@ if __name__ == '__main__':
     print('======推送完成=======')
     print('成功数目：', correct_num, correct_num/(correct_num+wrong_num))
     print('失败数目：', wrong_num, wrong_num/(correct_num+wrong_num))
-
-    result_df.write.saveAsTable('abc.news_data_pushing', mode='append', partitionBy='PUSH_TIME')
-
-    sc.parallelize([('start_time', first_push_time)]).toDF(['key', 'value']).write.mode(
-        'overwrite').format('json').save('hdfs://10.27.71.108:8020/spark_data/news_pushing.conf')
 
