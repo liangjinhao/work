@@ -124,7 +124,7 @@ def send(x, hs):
                 "tags": "",
                 'doc_score': 1.0,  # 网站 page rank 分值
                 "time": 0,
-                "tf_idf_words": ''
+                "keywords": ''
             })
 
             news_json['id'] = row['rowKey']
@@ -146,7 +146,7 @@ def send(x, hs):
                     'content' in row and row['content'] != '' and row['content'] is not None:
                 r = hs.get_hash(row['title'], news_json['content'])
                 news_json['doc_feature'] = r[0]
-                news_json['tf_idf_words'] = ' '.join(r[1])
+                news_json['keywords'] = ' '.join(r[1])
 
             if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
                 try:
