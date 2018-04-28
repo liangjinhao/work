@@ -84,17 +84,16 @@ if __name__ == '__main__':
     }
 
     # 设定一个时间截止日期,5天
-    timeStamp = time.time() - 86400 * 1
-    timeArray = time.localtime(timeStamp)
-    start_times = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-    end_times = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    days = 40
+    start_times = '2018-04-1 0:0:0'
+    end_times = '2018-05-05 0:0:0'
 
     startTime = datetime.datetime.strptime(start_times, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
     stopTime = datetime.datetime.strptime(end_times, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
     df_1 = connector.get_df_from_hbase(catelog1, start_time=startTime, stop_time=stopTime)
     df_1.registerTempTable('table_test1')
     new_df = spark_session.sql("select table_test1.content,table_test1.title,table_test1.id from table_test1")
-    org_data_rdd = new_df.rdd.filter(lambda x: x[0] is not None and x[1] is not None).repartition(100).persist(
+    org_data_rdd = new_df.rdd.filter(lambda x: x[0] is not None and x[1] is not None).repartition(20*days).persist(
         StorageLevel.DISK_ONLY)
 
     # content切词
@@ -110,7 +109,7 @@ if __name__ == '__main__':
 
     # 初步筛选用于计算tf_idf的数据
     # [(keyword ,([word_count,title_data or '',id], idf_value))]
-    tf_idf = title_clean_exchange.leftOuterJoin(idf_kv).filter(lambda x: x[1][1] != None)
+    tf_idf = title_clean_exchange.leftOuterJoin(idf_kv).filter(lambda x: x[1][1] is not None)
     # [id, [[keyword, weight, title_data]]]
     tf_idf_exchange = tf_idf.map(lambda x: [x[1][0][2], [[x[0], x[1][0][0] * eval(x[1][1]), x[1][0][1]]]])
     # [id,[[keyword1, weight1], [keyword2, weight2]]]
