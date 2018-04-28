@@ -29,7 +29,7 @@ def run(texts):
     lst_res = []
     for text in texts:
         try:
-            _text = "".join(re.findall(r'[\u4e00-\u9fa5]+', str(text[0], 'utf-8'), re.S))
+            _text = "".join(re.findall(r'[\u4e00-\u9fa5]+', text[0], re.S))
             response = client.segment(hanlp_pb2.HanlpRequest(text=_text, indexMode=0, nameRecognize=1, translatedNameRecognize=1))
             # TF词频
             dit = {}
@@ -102,8 +102,8 @@ if __name__ == '__main__':
 
     # 提取title中的日期
     title_clean_rdd = content_cut_rdd.map(lambda x: [x[0], clean_title(x[1]), x[2]])
-    title_clean_exchange = title_clean_rdd.map(lambda x: [[kv[0], [kv[1], x[1], x[2]]] for kv in x[0]]).flatMap(
-        lambda x: x)
+    title_clean_exchange = title_clean_rdd.map(lambda x: [[kv[0], [kv[1], x[1], x[2]]]
+                                                          for kv in x[0] if len(kv[0]) > 1]).flatMap(lambda x: x)
 
     idf_rdd = sc.textFile("hdfs://10.27.71.108:8020/spark_data/out/xlxu/idf_clean.txt")
     idf_kv = idf_rdd.map(lambda x: x.split(","))
