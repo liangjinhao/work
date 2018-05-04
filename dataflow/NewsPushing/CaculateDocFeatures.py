@@ -66,7 +66,7 @@ def clean_title(title):
 
 if __name__ == '__main__':
 
-    conf = SparkConf().setAppName("Fenci_org")
+    conf = SparkConf().setAppName("CaculateDocFeatures")
     sc = SparkContext(conf=conf)
     sc.setLogLevel("WARN")
     spark_session = SparkSession(sc)
