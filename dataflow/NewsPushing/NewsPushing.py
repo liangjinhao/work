@@ -5,11 +5,9 @@ import pshc
 import Utils
 import requests
 import re
-import json
-import hashlib
 import ast
 import site_rank
-import hstc
+
 
 """
 该脚本采用Spark读取HBase的news_data表里的数据，并通过POST请求发送到Solr服务上去
@@ -147,8 +145,6 @@ def send(x):
 
     site_ranks = site_rank.site_ranks
 
-    hs = hstc.Hash()
-
     for row in x:
 
         news_json = dict({
@@ -196,7 +192,7 @@ def send(x):
         news_json['crawl_time'] = row['crawl_time']
         news_json['brief'] = row['dese']
 
-        news_json['doc_feature'] = row['doc_feature']
+        news_json['doc_feature'] = row['doc_feature'] if 'doc_feature' in row else ''
 
         if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
             try:
@@ -206,7 +202,7 @@ def send(x):
             except Exception as e:
                 print(e)
 
-        news_json['keywords'] = row['keywords']
+        news_json['keywords'] = row['keywords'] if 'keywords' in row else ''
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
@@ -287,7 +283,7 @@ if __name__ == '__main__':
     }
 
     # 指定选取的推送起始时间，格式为 '%Y-%m-%d %H:%M:%S'
-    begin = '2018-1-31 11:59:59'
+    begin = '2018-04-01 0:0:0'
 
     startTime = datetime.datetime.strptime(begin, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
     stopTime = datetime.datetime.strptime('2050-01-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
