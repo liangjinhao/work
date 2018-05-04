@@ -65,6 +65,28 @@ def get_hbase_row(rowkey):
         return {}
 
 
+def insert(table_name, row):
+    """
+    向表中插入一条数据
+    :param table_name: 表名
+    :param row: 一条数据， 格式为{'row_key':'ad97c74a38b6','cf1:field1':'data...', 'cf2:field1':'data...'}
+    :return:
+    """
+
+    row_key = row['row_key'].encode('utf-8')
+    mutations = []
+    for item in row:
+        if item != 'row_key':
+            key = bytes(item, encoding="utf8")
+            var = bytes(str(row[item]), encoding="utf8")
+            # hbase.client.keyvalue.maxsize 默认是10M，超出这个值则设置为None
+            if len(var) < 10 * 1024 * 1024:
+                mutations.append(Hbase.Mutation(column=key, value=var))
+            else:
+                raise IllegalArgument("row_key: " + row['row_key'] + ' 的数据的 ' + item + ' 字段的值大小超过了10M ')
+    client.mutateRow(table_name, row_key, mutations, {})
+
+
 def post(url, rowkey, news_json, write_back_redis=True):
     """
     将单条数据 post 到 Solr 服务上
@@ -81,14 +103,14 @@ def post(url, rowkey, news_json, write_back_redis=True):
             logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 返回响应代码 " +
                          str(response.status_code) + "，数据 rowKey:" + rowkey
                          + '，错误为' + traceback.format_exc())
-            redis_client.rpush(REDIS_QUEUE, rowkey)
+            redis_client.lpush(REDIS_QUEUE, rowkey)
         else:
             logger.info(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 完成， rowKey:" + rowkey)
     except Exception as e:
         logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 异常： " + str(e) + "，数据 rowKey:" + rowkey
                      + '，错误为' + traceback.format_exc())
         if write_back_redis:
-            redis_client.rpush(REDIS_QUEUE, rowkey)
+            redis_client.lpush(REDIS_QUEUE, rowkey)
 
 
 def send(x, hs):
@@ -148,6 +170,11 @@ def send(x, hs):
                     r = hs.get_hash(row['title'], news_json['content'])
                     news_json['doc_feature'] = r[0]
                     news_json['keywords'] = ' '.join(r[1])
+                    # 计算好的结果写入到 Hbase
+                    insert('news_data',
+                           {'row_key': row['rowKey'],
+                            'info:doc_feature': news_json['doc_feature'],
+                            'info:keywords': news_json['keywords']})
                 except Exception:
                     logger.error(traceback.format_exc())
 
@@ -225,7 +252,7 @@ if __name__ == '__main__':
     hs = hstc.Hash()
 
     while True:
-        rowkey = r.lpop(name=REDIS_QUEUE)
+        rowkey = r.rpop(name=REDIS_QUEUE)
 
         if rowkey:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
