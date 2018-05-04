@@ -114,13 +114,13 @@ def post(url, rowkey, news_json, write_back_redis=True):
             redis_client.lpush(REDIS_QUEUE, rowkey)
 
 
-def send(x, hs):
+def send(x):
     """
     将数据作对应字段转换后 post 到 Solr 服务
     :param x:
     :return:
     """
-
+    hs = hstc.Hash()
     site_ranks = site_rank.site_ranks
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
@@ -250,15 +250,13 @@ if __name__ == '__main__':
     post_interval = 10  # 每 10s 发送一次
     post_time = time.time()
 
-    hs = hstc.Hash()
-
     while True:
         rowkey = r.rpop(name=REDIS_QUEUE)
 
         if rowkey:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
-            send([news], hs)
+            send([news])
 
             if time.time() - post_time > post_interval:
                 try:
