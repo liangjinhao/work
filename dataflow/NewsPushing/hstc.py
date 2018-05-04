@@ -30,7 +30,9 @@ class Hash:
         # initialize connection
         _HOST = '10.168.20.246'
         _PORT = '50051'
-        conn = grpc.insecure_channel(_HOST + ':' + _PORT)
+        mb = 1024 * 1024
+        GRPC_CHANNEL_OPTIONS = [('grpc.max_message_length', 64 * mb), ('grpc.max_receive_message_length', 64 * mb)]
+        conn = grpc.insecure_channel(_HOST + ':' + _PORT, options=GRPC_CHANNEL_OPTIONS)
         client = hanlp_pb2_grpc.GreeterStub(channel=conn)
         response = client.segment(
             hanlp_pb2.HanlpRequest(text=texts, indexMode=0, nameRecognize=1, translatedNameRecognize=1))
