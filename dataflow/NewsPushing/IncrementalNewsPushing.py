@@ -73,7 +73,8 @@ def insert(table_name, row):
     :return:
     """
 
-    row_key = row['row_key'].encode('utf-8')
+    row_key = bytes(row['row_key'], encoding='utf-8') if isinstance(row['row_key'], str) else row['row_key']
+    table_name = bytes(table_name, encoding='utf-8') if isinstance(table_name, str) else table_name
     mutations = []
     for item in row:
         if item != 'row_key':
