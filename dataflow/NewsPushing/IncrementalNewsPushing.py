@@ -144,9 +144,12 @@ def send(x, hs):
 
             if 'title' in row and row['title'] != '' and row['title'] is not None and \
                     'content' in row and row['content'] != '' and row['content'] is not None:
-                r = hs.get_hash(row['title'], news_json['content'])
-                news_json['doc_feature'] = r[0]
-                news_json['keywords'] = ' '.join(r[1])
+                try:
+                    r = hs.get_hash(row['title'], news_json['content'])
+                    news_json['doc_feature'] = r[0]
+                    news_json['keywords'] = ' '.join(r[1])
+                except Exception:
+                    logger.error(traceback.format_exc())
 
             if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
                 try:
