@@ -38,8 +38,13 @@ org.apache.hbase:hbase-common:1.1.12
 """
 
 
-POST_URLS = ['http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news',
-             'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
+# News Test:
+# 'http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+# News Product:
+# Search008: 'http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+# Search009: 'http://10.81.180.138:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
+
+POST_URLS = ['http://10.81.180.138:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
 
 
 def classify_news(news):
