@@ -16,6 +16,7 @@ from thrift.protocol import TBinaryProtocol
 from hbase import Hbase
 from hbase.ttypes import *
 import errno
+import requests
 
 
 # 是否全量更新
@@ -58,8 +59,9 @@ class MongodbFullSync(threading.Thread):
         super(MongodbFullSync, self).__init__()
 
         # 需要同步的 MongoDB collection
-        self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
-                       'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
+        # self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
+        #                'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
+        self.tables = ['cr_data.hb_charts', 'cr_data.hb_text', 'cr_data.juchao_charts', 'cr_data.juchao_text']
 
         self.log_dir = './log'
         try:
@@ -131,7 +133,7 @@ class MongodbFullSync(threading.Thread):
                         logger.info(table + ' 已经读出 ' + str(count / 10000) + ' 万条数据')
             end = time.time()
             logger.warning(table + ' 全量读出完成，累计读出 ' + str(count) + ' 条数据'
-                           + '，共耗时 ' + str((start-end)/60*60) + ' 小时')
+                           + '，共耗时 ' + str((end-start)/(60*60)) + ' 小时')
             client.close()
         except Exception:
             logger.error(traceback.format_exc())
@@ -163,15 +165,16 @@ class MongodbIncrementalSync(threading.Thread):
         admin.authenticate(USER, PASSWORD)
 
         # 需要同步的 MongoDB 表
-        self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
-                       'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
+        # self.tables = ['cr_data.hb_charts', 'cr_data.hb_tables', 'cr_data.hb_text',
+        #                'cr_data.juchao_charts', 'cr_data.juchao_tables', 'cr_data.juchao_text']
+        self.tables = ['cr_data.hb_charts', 'cr_data.hb_text', 'cr_data.juchao_charts', 'cr_data.juchao_text']
 
         # 读取 MongoDB Oplog 的等候间隔
         self.wait_interval = 0.1
 
         oplog_begin_time = self.client.local.oplog.rs.find().sort('$natural', pymongo.ASCENDING).next()['ts']
         if os.path.exists('./mongodb_incremental_status'):
-            status_time = json.loads(open('./mongodb_incremental_status').readline().strip())['sync_time']
+            status_time = json.loads(open('./mongodb_incremental_status').readline().strip())['sync_progress'].split(': ')[1]
 
             # status_time 存的不是 UTC 时间，先转换成 UTC 时间
             utc_offset_timedelta = datetime.datetime.utcnow() - datetime.datetime.now()
@@ -291,6 +294,18 @@ class MongodbIncrementalSync(threading.Thread):
                             write_ts = time.time()
                             open('./mongodb_incremental_status', 'w').write(json.dumps(self.status))
 
+                            try:
+                                # 给监测程序发送心跳post
+                                post_url = 'http://10.168.117.133:2999/watch'
+                                for key in self.status['table_info'].keys():
+                                    sync_progress = self.status['table_info'][key]['t_sync_progress']
+                                    requests.post(post_url,
+                                                  data={
+                                                      'name': 'MongodbHbaseSync_' + key.split('.')[1],
+                                                      'time': sync_progress})
+                            except:
+                                pass
+
             except Exception as e:
                 earliest_log = self.client.local.oplog.rs.find({'ns': {'$in': self.tables}}) \
                     .sort('$natural', pymongo.ASCENDING).next()
@@ -384,8 +399,8 @@ class HBaseSync(threading.Thread):
                     mutations.append(Hbase.Mutation(column=key, value=var))
                 else:
                     mutations.append(Hbase.Mutation(column=key, value=bytes(str(None), encoding="utf8")))
-                    self.logger.warning('_id为 ' + data['_id'] + ' 的数据的 ' + str(item) + ' 字段的值大小超过了'
-                                        + ' HBase 默认规定的键值10M限制，先已经置 None 替代该值')
+                    self.logger.warning(self.getName() + ' ' + data['table_name'] + ' 的 _id为 ' + data['_id'] + ' 的数据的 '
+                                        + str(item) + ' 字段的值大小超过了' + ' HBase 默认规定的键值10M限制，先已经置 None 替代该值')
             self.client.mutateRow(table_name, row_key, mutations, {})
             self.logger.debug(str(QUEUE.qsize()) + ' 插入到 HBase ' + str(data))
         elif op == 'd':
