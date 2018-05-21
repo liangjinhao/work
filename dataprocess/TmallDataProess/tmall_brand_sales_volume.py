@@ -90,37 +90,77 @@ def remove_duplicate_data(x):
     :return:
     """
     result = []
+    latest_date = ''
     for data in x:
         pid = data[0]
         info = data[1]
-        shopId = ''
-        shopName = ''
+        shopId = None
+        shopName = None
         data_set = dict()
+        earliest_date = ''
         for i in info:
-            shopId = i['shopId']
-            shopName = i['shopName']
-            price = i['price']  # 商名标准价格
-            priceSales = i['priceSales']  # 商名其他价格（促销，多个不同配置规格的商品）
+            status = i['status']
+            if 'shopId' in i and i['shopId'] is not None:
+                shopId = i['shopId']
+            if 'shopName' in i and i['shopName'] is not None:
+                shopName = i['shopName']
+            price = i['price'] if 'price' in i else None  # 商名标准价格
+            priceSales = i['priceSales'] if 'priceSales' in i else None  # 商名其他价格（促销，多个不同配置规格的商品）
+            soldQuantity = i['soldQuantity'] if 'soldQuantity' in i else None
             fetchedAt = i['fetchedAt']
-            soldQuantity = i['soldQuantity']
             date = fetchedAt.split(' ')[0]
-            if date not in data_set:
-                normed_price = price if priceSales == 0.0 else priceSales
-                data_set[date] = {'price': normed_price, 'fetchedAt': fetchedAt, 'soldQuantity': soldQuantity}
-            elif date in data_set and data_set[date]['fetchedAt'] < fetchedAt:
-                data_set[date]['fetchedAt'] = fetchedAt
-                normed_price = price if priceSales == 0.0 else priceSales
-                data_set[date]['price'] = normed_price
-                data_set[date]['soldQuantity'] = soldQuantity
+
+            earliest_date = date if date < earliest_date or earliest_date == '' else earliest_date
+            latest_date = date if date > latest_date or latest_date == '' else latest_date
+            if status == '0':
+                data_set[date] = {'status': '0', 'fetchedAt': fetchedAt, 'price': None, 'soldQuantity': None}
+            else:
+                if priceSales is None and price is None:
+                    normed_price = None
+                elif priceSales is not None and price is None:
+                    normed_price = priceSales
+                elif priceSales is None and price is not None:
+                    normed_price = price
+                else:
+                    normed_price = price if priceSales == 0.0 else priceSales
+
+                if shopId is None or shopName is None or normed_price is None or soldQuantity is None:
+                    continue
+
+                if date not in data_set:
+                    data_set[date] = {'status': '1', 'price': normed_price, 'fetchedAt': fetchedAt, 'soldQuantity': soldQuantity}
+                elif date in data_set and data_set[date]['fetchedAt'] < fetchedAt:
+                    data_set[date]['status'] = '1'
+                    data_set[date]['fetchedAt'] = fetchedAt
+                    data_set[date]['price'] = normed_price
+                    data_set[date]['soldQuantity'] = soldQuantity
+
+        # 修补缺失的数据
+        date_range = (datetime.datetime.strptime(latest_date, '%Y-%m-%d').date() -
+                      datetime.datetime.strptime(earliest_date, '%Y-%m-%d').date()).days
+        amend_step = 0  # 单个商品连续多天补齐数据的最大次数，不能超过5次
+        for i in range(date_range):
+            date1 = str(datetime.datetime.strptime(earliest_date, '%Y-%m-%d').date() + datetime.timedelta(days=i + 1))
+            date2 = str(datetime.datetime.strptime(earliest_date, '%Y-%m-%d').date() + datetime.timedelta(days=i))
+            if date1 in data_set:
+                amend_step = 0
+            else:
+                if date2 in data_set and amend_step <= 5 and data_set[date2]['status'] == '1':
+                    data_set[date1] = data_set[date2]
+                    amend_step = amend_step + 1
+                else:
+                    break
+
         for i in data_set:
-            result.append(
-                {'pid': pid,
-                 'shopId': shopId,
-                 'shopName': shopName,
-                 'price': data_set[i]['price'],
-                 'soldQuantity': data_set[i]['soldQuantity'],
-                 'date': i
-                 })
+            if data_set[i]['status'] == '1':
+                result.append(
+                    {'pid': pid,
+                     'shopId': shopId,
+                     'shopName': shopName,
+                     'price': data_set[i]['price'],
+                     'soldQuantity': data_set[i]['soldQuantity'],
+                     'date': i
+                     })
     return result
 
 
@@ -227,11 +267,9 @@ if __name__ == '__main__':
     sparkSession.sparkContext.setLogLevel('WARN')
 
     # 计算出每日店铺销售额
-    df = sparkSession.sql("SELECT pid, shopId, shopName, price, priceSales, soldQuantity, fetchedAt "
-                          "FROM spider_data.tmall_product "
-                          "WHERE pid is not null AND shopId is not null AND shopName is not null "
-                          "AND price is not null AND priceSales is not null AND soldQuantity is not null "
-                          "AND fetchedAt is not null ")
+    df = sparkSession.sql("SELECT pid, shopId, shopName, price, priceSales, soldQuantity, fetchedAt, status "
+                          "FROM spider_data.tmall_product_v2 "
+                          "WHERE pid is not null AND fetchedAt is not null AND status is not null")
 
     rdd1 = df.rdd.groupBy(lambda x: x['pid']).mapPartitions(lambda x: remove_duplicate_data(x))
     rdd2 = rdd1.groupBy(lambda x: x['shopId']).mapPartitions(lambda x: cacul_brand_sales_volume(x))
