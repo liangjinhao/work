@@ -49,7 +49,7 @@ class ScrawlImagesConsumer(threading.Thread):
         self.RabbitMQ_port = 5672  # RabbitMQ 端口
         self.queue_name = 'labeled_scrawl_images'  # RabbitMQ 取数据的队列名字
 
-        self.thrift_ip = '10.27.71.108'  # thrift IP地址
+        self.thrift_ip = '10.27.68.197'  # thrift IP地址
         self.thrift_port = 9099  # thrift 端口
         self.hbase_table = b'news_img_data'  # 写入的Hbase的表名
 
