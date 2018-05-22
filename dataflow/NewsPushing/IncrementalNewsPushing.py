@@ -31,10 +31,8 @@ THRIFT_IP = '10.27.68.197'
 THRIFT_PORT = 9099
 HBASE_TABLE_NAME = b'news_data'
 
-# News Test: http://10.168.20.246:8080/solrweb/indexByUpdate?single=true&core_name=core_news
-# News Product: http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news
 
-POST_URLS = ['http://10.27.6.161:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
+POST_URLS = ['http://10.165.101.72:8086/news_update']
 
 # Thrift Client
 transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
