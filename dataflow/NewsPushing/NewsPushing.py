@@ -6,6 +6,8 @@ import Utils
 import requests
 import re
 import ast
+import pymysql
+from ac_search import ACSearch
 import site_rank
 
 
@@ -45,6 +47,61 @@ org.apache.hbase:hbase-common:1.1.12
 # Search009: 'http://10.81.180.138:8080/solrweb/indexByUpdate?single=true&core_name=core_news'
 
 POST_URLS = ['http://10.81.180.138:8080/solrweb/indexByUpdate?single=true&core_name=core_news']
+
+
+class StockInformer:
+
+    def __init__(self):
+        self.stock_info_file = ''
+        self.stock_info = self.update()
+
+        self.ac = ACSearch()
+        for i in self.stock_info:
+            self.ac.add_word(i)
+
+    # 从线上MySQL数据库拉取股票代码，名称和行业等信息
+    def update(self):
+
+        host = '10.117.211.16'
+        port = 6033
+        user = 'stin_sys_ro_pe'
+        password = 'b405038da87d'
+        db = 'r_reportor'
+        stock_info = {}
+        try:
+            connection = pymysql.connect(host=host, port=port, db=db,
+                                         user=user, password=password, charset='utf8',
+                                         cursorclass=pymysql.cursors.DictCursor)
+            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.sec_name, sec_industry_new.second_indu_name " \
+                  "FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
+                  "WHERE sec_basic_info.sec_uni_code = sec_industry_new.sec_uni_code AND " \
+                  "sec_industry_new.indu_standard = '1001016' AND sec_industry_new.if_performed = '1';"
+            cursor = connection.cursor()
+            cursor.execute(sql)
+            for row in cursor:
+                stock_code = row['sec_code']
+                stock_name = row['sec_name']
+                stock_industry = row['second_indu_name']
+                stock_info[stock_code] = (stock_name, stock_industry)
+                stock_info[stock_name] = (stock_code, stock_industry)
+
+            return stock_info
+        except Exception as e:
+            raise e
+
+    def extract_stock_info(self, text):
+        matched_list = self.ac.search(text)
+        result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
+        for item in matched_list:
+            if re.match('\d{6}', item):  # 匹配到股票代码
+                result['stock_code'].append(item)
+                result['stock_name'].append(self.stock_info[item][0])
+                result['stock_industry'].append(self.stock_info[item][1])
+            else:  # 匹配到股票名字
+                result['stock_name'].append(item)
+                result['stock_code'].append(self.stock_info[item][0])
+                result['stock_industry'].append(self.stock_info[item][1])
+        return result
 
 
 def classify_news(news):
@@ -148,6 +205,8 @@ def send(x):
 
     result = []
 
+    si = StockInformer()
+
     site_ranks = site_rank.site_ranks
 
     for row in x:
@@ -211,6 +270,13 @@ def send(x):
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
+
+        # 从 title 提取出股票相关信息
+        stock_info = si.extract_stock_info(news_json['title'])
+        news_json['stock_code'] = str(stock_info['stock_code'])
+        news_json['stock_name'] = str(stock_info['stock_name'])
+        news_json['stock_industry'] = str(stock_info['stock_industry'])
+
         news_json['url'] = row['url']
         news_json['tags'] = row['tag']
 

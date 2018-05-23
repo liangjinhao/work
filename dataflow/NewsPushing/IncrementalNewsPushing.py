@@ -12,6 +12,11 @@ from logging.handlers import RotatingFileHandler
 import traceback
 import hashlib
 import ast
+import re
+from apscheduler.schedulers.background import BackgroundScheduler
+import os
+import pymysql
+import ac_search
 import site_rank
 import hstc
 
@@ -27,6 +32,12 @@ REDIS_PORT = 8801
 REDIS_PASSWORD = "e65f63bb02d3"
 REDIS_QUEUE = 'index_pending_queue'
 
+DereplicationRedis = {
+    'ip': '10.81.88.218',
+    'port': 8103,
+    'password': 'qQKQwjcB0bdqD'
+}
+
 THRIFT_IP = '10.27.68.197'
 THRIFT_PORT = 9099
 HBASE_TABLE_NAME = b'news_data'
@@ -40,6 +51,80 @@ transport = TTransport.TBufferedTransport(transport)
 protocol = TBinaryProtocol.TBinaryProtocol(transport)
 client = Hbase.Client(protocol)
 transport.open()
+
+
+class StockInformer:
+
+    def __init__(self):
+        self.stock_info_file = ''
+        self.stock_info = {}
+
+        # 读取本地的股票行业信息
+        def load_file():
+            with open(self.stock_info_file) as f:
+                for line in f:
+                    infos = line.strip('\n').split('\t')
+                    stock_code = infos[0]
+                    stock_name = infos[1]
+                    stock_industry = infos[2]
+                    self.stock_info[stock_code] = (stock_name, stock_industry)
+                    self.stock_info[stock_name] = (stock_code, stock_industry)
+        if os.path.exists(self.stock_info_file):
+            load_file()
+        else:
+            self.update()
+            load_file()
+
+        from NewsPushing.ac_search import ACSearch
+        self.ac = ACSearch()
+        for i in self.stock_info:
+            self.ac.add_word(i)
+
+    # 从线上MySQL数据库拉取股票代码，名称和行业等信息
+    def update(self):
+
+        host = '10.117.211.16'
+        port = 6033
+        user = 'stin_sys_ro_pe'
+        password = 'b405038da87d'
+        db = 'r_reportor'
+        stock_info = {}
+        try:
+            connection = pymysql.connect(host=host, port=port, db=db,
+                                         user=user, password=password, charset='utf8',
+                                         cursorclass=pymysql.cursors.DictCursor)
+            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.sec_name, sec_industry_new.second_indu_name " \
+                  "FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
+                  "WHERE sec_basic_info.sec_uni_code = sec_industry_new.sec_uni_code AND " \
+                  "sec_industry_new.indu_standard = '1001016' AND sec_industry_new.if_performed = '1';"
+            cursor = connection.cursor()
+            cursor.execute(sql)
+            text = ''
+            for row in cursor:
+                stock_code = row['sec_code']
+                stock_name = row['sec_name']
+                stock_industry = row['second_indu_name']
+                stock_info[stock_code] = (stock_name, stock_industry)
+                text += stock_code + '\t' + stock_name + '\t' + stock_industry + '\n'
+
+            with open(self.stock_info_file, 'w') as f:
+                f.write(text)
+        except Exception as e:
+            raise e
+
+    def extract_stock_info(self, text):
+        matched_list = self.ac.search(text)
+        result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
+        for item in matched_list:
+            if re.match('\d{6}', item):  # 匹配到股票代码
+                result['stock_code'].append(item)
+                result['stock_name'].append(self.stock_info[item][0])
+                result['stock_industry'].append(self.stock_info[item][1])
+            else:  # 匹配到股票名字
+                result['stock_name'].append(item)
+                result['stock_code'].append(self.stock_info[item][0])
+                result['stock_industry'].append(self.stock_info[item][1])
+        return result
 
 
 def get_hbase_row(rowkey):
@@ -112,10 +197,12 @@ def post(url, rowkey, news_json, write_back_redis=True):
             redis_client.lpush(REDIS_QUEUE, rowkey)
 
 
-def send(x, hs):
+def send(x, hs, si):
     """
     将数据作对应字段转换后 post 到 Solr 服务
-    :param x:
+    :param x: 资讯数据
+    :param hs: hstc.Hash() 实例
+    :param si: StockInformer 实例
     :return:
     """
     site_ranks = site_rank.site_ranks
@@ -187,6 +274,24 @@ def send(x, hs):
             news_json['source_url'] = row['laiyuan'] if 'laiyuan' in row else ''
             news_json['source_name'] = row['source'] if 'source' in row else ''
             news_json['title'] = row['title'] if 'title' in row else ''
+
+            # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+            dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
+                                   password=DereplicationRedis['password'])
+            normed_title = news_json['title'].replace(' ', '')
+            title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+            if dp_redis.zscore('latest_titles', title_hash):
+                dp_redis.zadd('latest_titles', title_hash, time.time())
+                continue
+            else:
+                dp_redis.zadd('latest_titles', title_hash, time.time())
+
+            # 从 title 提取出股票相关信息
+            stock_info = si.extract_stock_info(news_json['title'])
+            news_json['stock_code'] = str(stock_info['stock_code'])
+            news_json['stock_name'] = str(stock_info['stock_name'])
+            news_json['stock_industry'] = str(stock_info['stock_industry'])
+
             news_json['url'] = row['url'] if 'url' in row else ''
             news_json['tags'] = row['tag'] if 'tag' in row else ''
 
@@ -213,6 +318,18 @@ def send(x, hs):
 
             for url in POST_URLS:
                 executor.submit(post, url, row['rowKey'], news_json)
+
+
+def redis_clean_cache(expire_hours=24*30*2):
+    """
+    删除 Redis 的 title 缓存中超时的数据
+    :param expire_hours: 超时小时数，默认是超过两个月认为超时
+    :return:
+    """
+    dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
+                           password=DereplicationRedis['password'])
+    ttl = time.time() - expire_hours*60*60
+    dp_redis.zremrangebyscore('', 0, ttl)
 
 
 if __name__ == '__main__':
@@ -247,7 +364,13 @@ if __name__ == '__main__':
     post_interval = 10  # 每 10s 发送一次
     post_time = time.time()
 
+    # 定时间隔任务调度，每隔固定周期清理 title 缓存 redis 中超时的数据
+    derepl_sche = BackgroundScheduler()
+    derepl_sche.add_job(redis_clean_cache, 'cron', hour=2)
+    logger.warning('清理完 Redis Title 缓存')
+
     hs = hstc.Hash()
+    si = StockInformer()
 
     while True:
         rowkey = r.rpop(name=REDIS_QUEUE)
@@ -255,7 +378,7 @@ if __name__ == '__main__':
         if rowkey:
             rowkey = str(rowkey, encoding='utf-8') if isinstance(rowkey, bytes) else rowkey
             news = get_hbase_row(rowkey)
-            send([news], hs)
+            send([news], hs, si)
 
             if time.time() - post_time > post_interval:
                 try:
