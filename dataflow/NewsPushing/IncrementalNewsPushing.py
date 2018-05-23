@@ -229,9 +229,12 @@ def send(x, hs, si):
                 "title": "",  # title
                 "url": "",  # url
                 "tags": "",
-                'doc_score': 1.0,  # 网站 page rank 分值
+                "doc_score": 1.0,  # 网站 page rank 分值
                 "time": 0,
-                "keywords": ''
+                "keywords": "",
+                "stockcode": "",
+                "stockname": "",
+                "industryname": ""
             })
 
             news_json['id'] = row['rowKey']
@@ -312,9 +315,9 @@ def send(x, hs, si):
 
             # 从 title 提取出股票相关信息
             stock_info = si.extract_stock_info(news_json['title'])
-            news_json['stock_code'] = str(stock_info['stock_code'])
-            news_json['stock_name'] = str(stock_info['stock_name'])
-            news_json['stock_industry'] = str(stock_info['stock_industry'])
+            news_json['stockcode'] = ','.join(stock_info['stock_code'])
+            news_json['stockname'] = ','.join(stock_info['stock_name'])
+            news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
             for url in POST_URLS:
                 executor.submit(post, url, row['rowKey'], news_json)
