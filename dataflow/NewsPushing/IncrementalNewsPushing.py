@@ -16,7 +16,7 @@ import re
 from apscheduler.schedulers.background import BackgroundScheduler
 import os
 import pymysql
-import ac_search
+from ac_search import ACSearch
 import site_rank
 import hstc
 
@@ -75,7 +75,6 @@ class StockInformer:
             self.update()
             load_file()
 
-        from NewsPushing.ac_search import ACSearch
         self.ac = ACSearch()
         for i in self.stock_info:
             self.ac.add_word(i)
