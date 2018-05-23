@@ -78,6 +78,7 @@ class StockInformer:
         self.ac = ACSearch()
         for i in self.stock_info:
             self.ac.add_word(i)
+        self.ac.start()
 
     # 从线上MySQL数据库拉取股票代码，名称和行业等信息
     def update(self):
@@ -274,23 +275,6 @@ def send(x, hs, si):
             news_json['source_name'] = row['source'] if 'source' in row else ''
             news_json['title'] = row['title'] if 'title' in row else ''
 
-            # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-            dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
-                                   password=DereplicationRedis['password'])
-            normed_title = news_json['title'].replace(' ', '')
-            title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
-            if dp_redis.zscore('latest_titles', title_hash):
-                dp_redis.zadd('latest_titles', title_hash, time.time())
-                continue
-            else:
-                dp_redis.zadd('latest_titles', title_hash, time.time())
-
-            # 从 title 提取出股票相关信息
-            stock_info = si.extract_stock_info(news_json['title'])
-            news_json['stock_code'] = str(stock_info['stock_code'])
-            news_json['stock_name'] = str(stock_info['stock_name'])
-            news_json['stock_industry'] = str(stock_info['stock_industry'])
-
             news_json['url'] = row['url'] if 'url' in row else ''
             news_json['tags'] = row['tag'] if 'tag' in row else ''
 
@@ -314,6 +298,23 @@ def send(x, hs, si):
                     continue
                     # news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
                     # news_json['time'] = 0
+
+            # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+            dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
+                                   password=DereplicationRedis['password'])
+            normed_title = news_json['title'].replace(' ', '')
+            title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+            if dp_redis.zscore('latest_titles', title_hash):
+                dp_redis.zadd('latest_titles', title_hash, news_json['time'])
+                continue
+            else:
+                dp_redis.zadd('latest_titles', title_hash, news_json['time'])
+
+            # 从 title 提取出股票相关信息
+            stock_info = si.extract_stock_info(news_json['title'])
+            news_json['stock_code'] = str(stock_info['stock_code'])
+            news_json['stock_name'] = str(stock_info['stock_name'])
+            news_json['stock_industry'] = str(stock_info['stock_industry'])
 
             for url in POST_URLS:
                 executor.submit(post, url, row['rowKey'], news_json)
