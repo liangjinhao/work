@@ -85,10 +85,10 @@ class StockInformer:
                 stock_name = row['sec_name']
                 stock_industry = row['second_indu_name']
                 if stk_code.endswith(".N") or stk_code.endswith(".O") or stk_code.endswith(".A"):
-                    stock_info[stock_name] = (stock_code, stock_industry)
+                    stock_info[stock_name] = (stock_code, stk_code, stock_name, stock_industry)
                 else:
-                    stock_info[stock_name] = (stock_code, stock_industry)
-                    stock_info[stock_code] = (stock_name, stock_industry)
+                    stock_info[stock_name] = (stock_code, stk_code, stock_name, stock_industry)
+                    stock_info[stock_code] = (stock_code, stk_code, stock_name, stock_industry)
 
             return stock_info
         except Exception as e:
@@ -99,14 +99,18 @@ class StockInformer:
         matched_list = list(set(matched_list))
         result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
         for item in matched_list:
-            if re.match('\d{6}', item):  # 匹配到股票代码
-                result['stock_code'].append(self.stock_info[item][0])
+            if re.match('\d{4,}', item):  # 匹配到股票代码
+                if self.stock_info[item][1] in result['stock_code']:
+                    continue
+                result['stock_name'].append(self.stock_info[item][2])
                 result['stock_code'].append(self.stock_info[item][1])
-                result['stock_industry'].append(self.stock_info[item][2])
+                result['stock_industry'].append(self.stock_info[item][3])
             else:  # 匹配到股票名字
-                result['stock_name'].append(item)
+                if self.stock_info[item][2] in result['stock_name']:
+                    continue
+                result['stock_name'].append(self.stock_info[item][2])
                 result['stock_code'].append(self.stock_info[item][1])
-                result['stock_industry'].append(self.stock_info[item][2])
+                result['stock_industry'].append(self.stock_info[item][3])
         return result
 
 

@@ -71,10 +71,10 @@ class StockInformer:
 
                     # 美股的股票代码是英文缩写，不匹配股票代码，只匹配股票名称，因为英文缩写匹配太广泛，比如美股的 “A” 表示 “安捷伦科技”
                     if stk_code.endswith(".N") or stk_code.endswith(".O") or stk_code.endswith(".A"):
-                        self.stock_info[stock_name] = (stock_code, stk_code, stock_industry)
+                        self.stock_info[stock_name] = (stock_code, stk_code, stock_name, stock_industry)
                     else:
-                        self.stock_info[stock_name] = (stock_code, stk_code, stock_industry)
-                        self.stock_info[stock_code] = (stock_name, stk_code, stock_industry)
+                        self.stock_info[stock_name] = (stock_code, stk_code, stock_name, stock_industry)
+                        self.stock_info[stock_code] = (stock_code, stk_code, stock_name, stock_industry)
 
         if os.path.exists(self.stock_info_file):
             load_file()
@@ -126,14 +126,18 @@ class StockInformer:
         matched_list = list(set(matched_list))
         result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
         for item in matched_list:
-            if re.match('\d{6}', item):  # 匹配到股票代码
-                result['stock_name'].append(self.stock_info[item][0])
+            if re.match('\d{4,}', item):  # 匹配到股票代码
+                if self.stock_info[item][1] in result['stock_code']:
+                    continue
+                result['stock_name'].append(self.stock_info[item][2])
                 result['stock_code'].append(self.stock_info[item][1])
-                result['stock_industry'].append(self.stock_info[item][2])
+                result['stock_industry'].append(self.stock_info[item][3])
             else:  # 匹配到股票名字
-                result['stock_name'].append(item)
+                if self.stock_info[item][2] in result['stock_name']:
+                    continue
+                result['stock_name'].append(self.stock_info[item][2])
                 result['stock_code'].append(self.stock_info[item][1])
-                result['stock_industry'].append(self.stock_info[item][2])
+                result['stock_industry'].append(self.stock_info[item][3])
         return result
 
 
