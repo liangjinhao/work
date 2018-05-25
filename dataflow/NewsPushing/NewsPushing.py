@@ -72,18 +72,23 @@ class StockInformer:
             connection = pymysql.connect(host=host, port=port, db=db,
                                          user=user, password=password, charset='utf8',
                                          cursorclass=pymysql.cursors.DictCursor)
-            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.sec_name, sec_industry_new.second_indu_name " \
-                  "FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
+            # 选取美股（GICS行业标准），港股（GICS行业标准），A股（申银行业标准）
+            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.stk_code,, sec_basic_info.sec_name, " \
+                  "sec_industry_new.second_indu_name FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
                   "WHERE sec_basic_info.sec_uni_code = sec_industry_new.sec_uni_code AND " \
-                  "sec_industry_new.indu_standard = '1001016' AND sec_industry_new.if_performed = '1';"
+                  "(indu_standard = '1001007' OR indu_standard = '1001016') AND sec_industry_new.if_performed = '1';"
             cursor = connection.cursor()
             cursor.execute(sql)
             for row in cursor:
                 stock_code = row['sec_code']
+                stk_code = row['sec_code']
                 stock_name = row['sec_name']
                 stock_industry = row['second_indu_name']
-                stock_info[stock_code] = (stock_name, stock_industry)
-                stock_info[stock_name] = (stock_code, stock_industry)
+                if stk_code.endswith(".N") or stk_code.endswith(".O") or stk_code.endswith(".A"):
+                    stock_info[stock_name] = (stock_code, stock_industry)
+                else:
+                    stock_info[stock_name] = (stock_code, stock_industry)
+                    stock_info[stock_code] = (stock_name, stock_industry)
 
             return stock_info
         except Exception as e:
@@ -93,14 +98,14 @@ class StockInformer:
         matched_list = self.ac.search(text)
         result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
         for item in matched_list:
-            if re.match('\d{6}', item):  # 匹配到股票代码
-                result['stock_code'].append(item)
-                result['stock_name'].append(self.stock_info[item][0])
-                result['stock_industry'].append(self.stock_info[item][1])
+            if re.match('\d{6}', item) or re.match('[A-Z_]*]', item):  # 匹配到股票代码
+                result['stock_code'].append(self.stock_info[item][0])
+                result['stock_code'].append(self.stock_info[item][1])
+                result['stock_industry'].append(self.stock_info[item][2])
             else:  # 匹配到股票名字
                 result['stock_name'].append(item)
-                result['stock_code'].append(self.stock_info[item][0])
-                result['stock_industry'].append(self.stock_info[item][1])
+                result['stock_code'].append(self.stock_info[item][1])
+                result['stock_industry'].append(self.stock_info[item][2])
         return result
 
 
@@ -273,9 +278,12 @@ def send(x):
 
         # 从 title 提取出股票相关信息
         stock_info = si.extract_stock_info(news_json['title'])
-        news_json['stock_code'] = str(stock_info['stock_code'])
-        news_json['stock_name'] = str(stock_info['stock_name'])
-        news_json['stock_industry'] = str(stock_info['stock_industry'])
+        stock_str = ''
+        for i in range(len(stock_info['stock_code'])):
+            stock_str += stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i] + ','
+        news_json['stockcode'] = stock_str
+        news_json['stockname'] = ','.join(stock_info['stock_name'])
+        news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
         news_json['url'] = row['url']
         news_json['tags'] = row['tag']

@@ -65,10 +65,17 @@ class StockInformer:
                 for line in f:
                     infos = line.strip('\n').split('\t')
                     stock_code = infos[0]
-                    stock_name = infos[1]
-                    stock_industry = infos[2]
-                    self.stock_info[stock_code] = (stock_name, stock_industry)
-                    self.stock_info[stock_name] = (stock_code, stock_industry)
+                    stk_code = infos[1]
+                    stock_name = infos[2]
+                    stock_industry = infos[3]
+
+                    # 美股的股票代码是英文缩写，不匹配股票代码，只匹配股票名称，因为英文缩写匹配太广泛，比如美股的 “A” 表示 “安捷伦科技”
+                    if stk_code.endswith(".N") or stk_code.endswith(".O") or stk_code.endswith(".A"):
+                        self.stock_info[stock_name] = (stock_code, stk_code, stock_industry)
+                    else:
+                        self.stock_info[stock_name] = (stock_code, stk_code, stock_industry)
+                        self.stock_info[stock_code] = (stock_name, stk_code, stock_industry)
+
         if os.path.exists(self.stock_info_file):
             load_file()
         else:
@@ -93,19 +100,22 @@ class StockInformer:
             connection = pymysql.connect(host=host, port=port, db=db,
                                          user=user, password=password, charset='utf8',
                                          cursorclass=pymysql.cursors.DictCursor)
-            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.sec_name, sec_industry_new.second_indu_name " \
-                  "FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
+
+            # 选取美股（GICS行业标准），港股（GICS行业标准），A股（申银行业标准）
+            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.stk_code,, sec_basic_info.sec_name, " \
+                  "sec_industry_new.second_indu_name FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
                   "WHERE sec_basic_info.sec_uni_code = sec_industry_new.sec_uni_code AND " \
-                  "sec_industry_new.indu_standard = '1001016' AND sec_industry_new.if_performed = '1';"
+                  "(indu_standard = '1001007' OR indu_standard = '1001016') AND sec_industry_new.if_performed = '1';"
             cursor = connection.cursor()
             cursor.execute(sql)
             text = ''
             for row in cursor:
                 stock_code = row['sec_code']
+                stk_code = row['sec_code']
                 stock_name = row['sec_name']
                 stock_industry = row['second_indu_name']
                 stock_info[stock_code] = (stock_name, stock_industry)
-                text += stock_code + '\t' + stock_name + '\t' + stock_industry + '\n'
+                text += stock_code + '\t' + stk_code + '\t' + stock_name + '\t' + stock_industry + '\n'
 
             with open(self.stock_info_file, 'w') as f:
                 f.write(text)
@@ -116,14 +126,14 @@ class StockInformer:
         matched_list = self.ac.search(text)
         result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
         for item in matched_list:
-            if re.match('\d{6}', item):  # 匹配到股票代码
-                result['stock_code'].append(item)
+            if re.match('\d{6}', item) or re.match('[A-Z_]*]', item):  # 匹配到股票代码
                 result['stock_name'].append(self.stock_info[item][0])
-                result['stock_industry'].append(self.stock_info[item][1])
+                result['stock_code'].append(self.stock_info[item][1])
+                result['stock_industry'].append(self.stock_info[item][2])
             else:  # 匹配到股票名字
                 result['stock_name'].append(item)
-                result['stock_code'].append(self.stock_info[item][0])
-                result['stock_industry'].append(self.stock_info[item][1])
+                result['stock_code'].append(self.stock_info[item][1])
+                result['stock_industry'].append(self.stock_info[item][2])
         return result
 
 
@@ -315,7 +325,10 @@ def send(x, hs, si):
 
             # 从 title 提取出股票相关信息
             stock_info = si.extract_stock_info(news_json['title'])
-            news_json['stockcode'] = ','.join(stock_info['stock_code'])
+            stock_str = ''
+            for i in range(len(stock_info['stock_code'])):
+                stock_str += stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i] + ','
+            news_json['stockcode'] = stock_str
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
