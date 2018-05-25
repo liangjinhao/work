@@ -123,6 +123,7 @@ class StockInformer:
 
     def extract_stock_info(self, text):
         matched_list = self.ac.search(text)
+        matched_list = list(set(matched_list))
         result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
         for item in matched_list:
             if re.match('\d{6}', item):  # 匹配到股票代码
@@ -324,10 +325,10 @@ def send(x, hs, si):
 
             # 从 title 提取出股票相关信息
             stock_info = si.extract_stock_info(news_json['title'])
-            stock_str = ''
+            stock_pair = []
             for i in range(len(stock_info['stock_code'])):
-                stock_str += stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i] + ','
-            news_json['stockcode'] = stock_str
+                stock_pair.append(stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i])
+            news_json['stockcode'] = ','.join(stock_pair)
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
