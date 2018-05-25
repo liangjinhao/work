@@ -102,7 +102,7 @@ class StockInformer:
                                          cursorclass=pymysql.cursors.DictCursor)
 
             # 选取美股（GICS行业标准），港股（GICS行业标准），A股（申银行业标准）
-            sql = "SELECT sec_basic_info.sec_code, sec_basic_info.stk_code,, sec_basic_info.sec_name, " \
+            sql = "SELECT sec_basic_info.sec_code, sec_industry_new.stk_code, sec_basic_info.sec_name, " \
                   "sec_industry_new.second_indu_name FROM r_reportor.sec_basic_info join r_reportor.sec_industry_new " \
                   "WHERE sec_basic_info.sec_uni_code = sec_industry_new.sec_uni_code AND " \
                   "(indu_standard = '1001007' OR indu_standard = '1001016') AND sec_industry_new.if_performed = '1';"
@@ -111,10 +111,9 @@ class StockInformer:
             text = ''
             for row in cursor:
                 stock_code = row['sec_code']
-                stk_code = row['sec_code']
+                stk_code = row['stk_code']
                 stock_name = row['sec_name']
                 stock_industry = row['second_indu_name']
-                stock_info[stock_code] = (stock_name, stock_industry)
                 text += stock_code + '\t' + stk_code + '\t' + stock_name + '\t' + stock_industry + '\n'
 
             with open(self.stock_info_file, 'w') as f:
@@ -126,7 +125,7 @@ class StockInformer:
         matched_list = self.ac.search(text)
         result = {'stock_code': [], 'stock_name': [], 'stock_industry': []}
         for item in matched_list:
-            if re.match('\d{6}', item) or re.match('[A-Z_]*]', item):  # 匹配到股票代码
+            if re.match('\d{6}', item):  # 匹配到股票代码
                 result['stock_name'].append(self.stock_info[item][0])
                 result['stock_code'].append(self.stock_info[item][1])
                 result['stock_industry'].append(self.stock_info[item][2])
