@@ -345,8 +345,8 @@ def redis_clean_cache(expire_hours=24*30*2):
     dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
                            password=DereplicationRedis['password'])
     ttl = time.time() - expire_hours*60*60
-    dp_redis.zremrangebyscore('', 0, ttl)
-    logger.warning('清理完 Redis Title 缓存')
+    num = dp_redis.zremrangebyscore('', 0, ttl)
+    logger.warning('清理完 Redis Title 缓存，删除 ' + str(num) + ' 条过期数据')
 
 
 if __name__ == '__main__':
@@ -384,6 +384,7 @@ if __name__ == '__main__':
     # 定时间隔任务调度，每隔固定周期清理 title 缓存 redis 中超时的数据
     derepl_sche = BackgroundScheduler()
     derepl_sche.add_job(redis_clean_cache, 'cron', hour=2)
+    derepl_sche.start()
 
     hs = hstc.Hash()
     si = StockInformer()
