@@ -223,7 +223,7 @@ def get_notify_shops(x):
                 "sales_change_ratio": 0,
                 "lost_data": True,
             })
-        elif two_days_ago not in data_set:
+        elif two_days_ago in data_set:
             float_ratio = abs(data_set[yesterday] - data_set[two_days_ago])/(data_set[two_days_ago]+1)
             if float_ratio > notify_ratio:
                 result.append({
