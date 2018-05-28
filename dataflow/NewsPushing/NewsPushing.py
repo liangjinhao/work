@@ -52,6 +52,7 @@ class StockInformer:
         self.ac = ACSearch()
         for i in self.stock_info:
             self.ac.add_word(i)
+        self.ac.start()
 
     # 从线上MySQL数据库拉取股票代码，名称和行业等信息
     def update(self):
