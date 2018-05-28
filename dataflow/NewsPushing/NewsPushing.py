@@ -236,6 +236,9 @@ def send(x):
             "tags": "",
             'doc_score': 1.0,  # 新闻网站的PageRank值
             "time": 0,
+            "stockcode": "",
+            "stockname": "",
+            "industryname": "",
             "PUSH_STATUS": False,
             "PUSH_TIME": '2018-01-01 0:0:0.000000'
         })
@@ -277,13 +280,14 @@ def send(x):
         news_json['title'] = row['title']
 
         # 从 title 提取出股票相关信息
-        stock_info = si.extract_stock_info(news_json['title'])
-        stock_pair = []
-        for i in range(len(stock_info['stock_code'])):
-            stock_pair.append(stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i])
-        news_json['stockcode'] = ','.join(stock_pair)
-        news_json['stockname'] = ','.join(stock_info['stock_name'])
-        news_json['industryname'] = ','.join(stock_info['stock_industry'])
+        if news_json['title'] != '' and news_json['title'] is not None:
+            stock_info = si.extract_stock_info(news_json['title'])
+            stock_pair = []
+            for i in range(len(stock_info['stock_code'])):
+                stock_pair.append(stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i])
+            news_json['stockcode'] = ','.join(stock_pair)
+            news_json['stockname'] = ','.join(stock_info['stock_name'])
+            news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
         news_json['url'] = row['url']
         news_json['tags'] = row['tag']
@@ -362,7 +366,7 @@ if __name__ == '__main__':
     }
 
     # 指定选取的推送起始时间，格式为 '%Y-%m-%d %H:%M:%S'
-    begin = '2018-04-01 0:0:0'
+    begin = '2018-05-01 0:0:0'
 
     startTime = datetime.datetime.strptime(begin, '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
     stopTime = datetime.datetime.strptime('2050-01-01 1:0:0', '%Y-%m-%d %H:%M:%S').strftime('%s') + '000'
