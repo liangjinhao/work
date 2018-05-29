@@ -286,7 +286,7 @@ def send(x):
             stock_pair = []
             for i in range(len(stock_info['stock_code'])):
                 stock_pair.append([stock_info['stock_code'][i], stock_info['stock_name'][i]])
-            news_json['stockcode'] = json.dumps(stock_pair)
+            news_json['stockcode'] = json.dumps(stock_pair) if stock_pair != [] else ''
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
