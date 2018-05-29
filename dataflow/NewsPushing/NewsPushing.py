@@ -6,6 +6,7 @@ import Utils
 import requests
 import re
 import ast
+import json
 import pymysql
 from ac_search import ACSearch
 import site_rank
@@ -284,8 +285,8 @@ def send(x):
             stock_info = si.extract_stock_info(news_json['title'])
             stock_pair = []
             for i in range(len(stock_info['stock_code'])):
-                stock_pair.append(stock_info['stock_code'][i] + ' ' + stock_info['stock_name'][i])
-            news_json['stockcode'] = ','.join(stock_pair)
+                stock_pair.append([stock_info['stock_code'][i], stock_info['stock_name'][i]])
+            news_json['stockcode'] = json.dumps(stock_pair)
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
