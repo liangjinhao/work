@@ -320,7 +320,7 @@ def send(x, hs, si):
             # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
             dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
                                    password=DereplicationRedis['password'])
-            normed_title = news_json['title'].replace(' ', '')
+            normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
             title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
             if dp_redis.zscore('latest_titles', title_hash):
                 dp_redis.zadd('latest_titles', title_hash, news_json['time'])
