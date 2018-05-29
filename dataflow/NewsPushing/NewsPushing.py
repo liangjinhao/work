@@ -4,9 +4,11 @@ import datetime
 import pshc
 import Utils
 import requests
+import hashlib
 import re
 import ast
 import json
+import redis
 import pymysql
 from ac_search import ACSearch
 import site_rank
@@ -42,6 +44,12 @@ org.apache.hbase:hbase-common:1.1.12
 
 
 POST_URLS = ['http://10.165.101.72:8086/news_update']
+
+DereplicationRedis = {
+    'ip': '10.81.88.218',
+    'port': 8103,
+    'password': 'qQKQwjcB0bdqD'
+}
 
 
 class StockInformer:
@@ -279,6 +287,17 @@ def send(x):
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
+
+        # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+        dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
+                               password=DereplicationRedis['password'])
+        normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
+        title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+        if dp_redis.zscore('latest_titles', title_hash):
+            dp_redis.zadd('latest_titles', title_hash, news_json['time'])
+            continue
+        else:
+            dp_redis.zadd('latest_titles', title_hash, news_json['time'])
 
         # 从 title 提取出股票相关信息
         if news_json['title'] != '' and news_json['title'] is not None:
