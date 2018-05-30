@@ -218,6 +218,8 @@ class MongodbIncrementalSync(threading.Thread):
     def run(self):
         global QUEUE
         count = 0
+        write_status_interval = 5 * 60  # 保存推送情况 status 文件的间隔
+        write_ts = time.time()
         while True:
             try:
                 cursor = self.client.local.oplog.rs.find({'ts': {'$gte': self.start_ts}},
@@ -225,16 +227,15 @@ class MongodbIncrementalSync(threading.Thread):
                                                          oplog_replay=True).sort('$natural', pymongo.ASCENDING)
 
                 while cursor.alive:
-                    write_status_interval = 5*60  # 保存推送情况 status 文件的间隔
-                    write_ts = time.time()
                     for doc in cursor:
-                        count += 1
-                        if count % 100000 == 0:
-                            self.logger.info('已经同步' + str(count / 10000) + ' 万条操作记录')
-
                         table_name = doc['ns']
                         self.status['number'] = self.status['number'] + 1
                         if table_name in self.tables:
+
+                            count += 1
+                            if count % 100000 == 0:
+                                self.logger.info('已经同步' + str(count / 10000) + ' 万条操作记录')
+
                             op = doc['op']
                             new_doc = dict()
                             new_doc['op'] = 'd' if op == 'd' else 'i'
