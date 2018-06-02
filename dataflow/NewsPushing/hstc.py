@@ -1,4 +1,3 @@
-import sys
 import grpc
 import hanlp_pb2
 import hanlp_pb2_grpc
@@ -24,11 +23,10 @@ class Hash:
                     pass
         f.close()
 
-    # 东风分词接口, 对content进行分词
+    # 对content进行分词
     def run(self, texts):
         # 分词，返回结果
-        # initialize connection
-        _HOST = '10.168.20.246'
+        _HOST = '121.40.125.154'
         _PORT = '50051'
         mb = 1024 * 1024
         GRPC_CHANNEL_OPTIONS = [('grpc.max_message_length', 64 * mb), ('grpc.max_receive_message_length', 64 * mb)]
@@ -63,9 +61,12 @@ class Hash:
 
     # content切词 并 依据TF-IDF抽取关键词
     def cut_content(self, content):
-        # 东风分词接口
-        # content = "".join(re.findall(ur"[\u4e00-\u9fa5]+", content, re.S))
-        content_dit = self.run(content)
+        unlabel_content = re.split(
+            "\\n|\\r|/address|/caption|/dd|/div|/dl|/dt|/fieldset|/form|/h1|/h2|/h3|/h4|/h5|/h6|/hr|/legend|/li|"
+            "/noframes|/noscript|/ol|/ul|/p|/pre|/table|/tbody|/td|/tfood|/th|/thead|/tr|br/?", content)
+        clean_content = map(lambda x: "".join(re.findall('[\u4e00-\u9fa5]+', x)), unlabel_content)
+        clean_content_sorted = sorted(clean_content, key=lambda x: len(x), reverse=True)[:3]
+        content_dit = self.run(clean_content_sorted)
         # TF-IDF提取权重最高的８个词
         keyWords = []
         for word in content_dit:
@@ -76,7 +77,7 @@ class Hash:
                 keyWords.append([word, -100])
         keyWord = sorted(keyWords, key=lambda x: x[1], reverse=True)
         # 取前８个
-        keyWord = list(map(lambda x: x[0], keyWord[:8]))
+        keyWord = list(map(lambda x: x[0], keyWord[:6]))
         return keyWord
 
     # hash映射函数
