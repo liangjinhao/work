@@ -33,18 +33,31 @@ REDIS_PORT = 8801
 REDIS_PASSWORD = "e65f63bb02d3"
 REDIS_QUEUE = 'index_pending_queue'
 
-DereplicationRedis = {
-    'ip': '10.81.88.218',
-    'port': 8103,
-    'password': 'qQKQwjcB0bdqD'
-}
+# 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
+# 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
+POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news']
+
+# 推送资讯的用于近期title去重的Redis连接信息，不同的消息推送的存储title的 Sorted Set 的 setname 不一样，保持
+# POST_URLS与 DereplicationRedis 的一致性
+DereplicationRedis = [
+    {
+        'ip': '10.81.88.218',
+        'port': 8103,
+        'password': 'qQKQwjcB0bdqD',
+        'setname': "latest_titles"
+    },
+    {
+        'ip': '10.81.88.218',
+        'port': 8103,
+        'password': 'qQKQwjcB0bdqD',
+        'setname': "solr2_latest_titles"
+    }
+]
 
 THRIFT_IP = '10.27.68.197'
 THRIFT_PORT = 9099
 HBASE_TABLE_NAME = b'news_data'
 
-
-POST_URLS = ['http://10.165.101.72:8086/news_update']
 
 # Thrift Client
 transport = TSocket.TSocket(THRIFT_IP, THRIFT_PORT)
@@ -196,8 +209,10 @@ def post(url, rowkey, news_json, write_back_redis=True):
     :return:
     """
     redis_client = redis.Redis(host=REDIS_IP, port=REDIS_PORT, password=REDIS_PASSWORD)
+    head = {'Content-Type': 'application/json'}
+    params = {"overwrite": "true", "commitWithin": 100000}
     try:
-        response = requests.post(url, json=[news_json])
+        response = requests.post(url, params=params, headers=head, json=[news_json])
         if response.status_code != 200 and write_back_redis:
             logger.error(str(redis_client.llen(REDIS_QUEUE)) + "    推送 Solr 返回响应代码 " +
                          str(response.status_code) + "，数据 rowKey:" + rowkey
@@ -285,7 +300,7 @@ def send(x, hs, si):
                 try:
                     image_list = ast.literal_eval(row['image_list'])
                     if isinstance(image_list, list):
-                        news_json['first_image_oss'] = image_list[0]
+                        news_json['first_image_oss'] = image_list[0].replace("-internal.aliyuncs.com", ".aliyuncs.com")
                 except Exception:
                     logger.error(traceback.format_exc())
 
@@ -317,17 +332,6 @@ def send(x, hs, si):
                     # news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
                     # news_json['time'] = 0
 
-            # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-            dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
-                                   password=DereplicationRedis['password'])
-            normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
-            title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
-            if dp_redis.zscore('latest_titles', title_hash):
-                dp_redis.zadd('latest_titles', title_hash, news_json['time'])
-                continue
-            else:
-                dp_redis.zadd('latest_titles', title_hash, news_json['time'])
-
             # 从 title 提取出股票相关信息
             stock_info = si.extract_stock_info(news_json['title'])
             stock_pair = []
@@ -337,8 +341,18 @@ def send(x, hs, si):
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
-            for url in POST_URLS:
-                executor.submit(post, url, row['rowKey'], news_json)
+            for i in range(len(POST_URLS)):
+                dr = DereplicationRedis[i]
+                # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+                dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
+                normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
+                title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+                if dp_redis.zscore(dr['setname'], title_hash):
+                    dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+                    continue
+                else:
+                    dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+                executor.submit(post, POST_URLS[i], row['rowKey'], news_json)
 
 
 def redis_clean_cache(expire_hours=24*30*2):
@@ -350,8 +364,9 @@ def redis_clean_cache(expire_hours=24*30*2):
     dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
                            password=DereplicationRedis['password'])
     ttl = time.time() - expire_hours*60*60
-    num = dp_redis.zremrangebyscore('', 0, ttl)
-    logger.warning('清理完 Redis Title 缓存，删除 ' + str(num) + ' 条过期数据')
+    for i in DereplicationRedis:
+        num = dp_redis.zremrangebyscore(i['setname'], 0, ttl)
+        logger.warning('清理完 Redis ' + i['setname'] + ' 缓存，删除 ' + str(num) + ' 条过期数据')
 
 
 if __name__ == '__main__':

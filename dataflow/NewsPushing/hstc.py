@@ -86,13 +86,18 @@ class Hash:
 
     # 获取该文章的hash值
     def get_hash(self, title, content):
-        content_ = self.cut_content(content)
-        title_ = self.clean_title(title)
-        # title+content的hash值
-        if title_:
-            title_content = title_+"".join(content_)
-            value = self.hash_func(title_content)
-        else:
-            value = self.hash_func("".join(content_))
-        # return value
-        return [value, content_]
+        # 这个地方尝试5次
+        for i in range(5):
+            try:
+                content_ = self.cut_content(content)
+                title_ = self.clean_title(title)
+                # title+content的hash值
+                if title_:
+                    title_content = title_+"".join(content_)
+                    value = self.hash_func(title_content)
+                else:
+                    value = self.hash_func("".join(content_))
+                # return value
+                return [value, content_]
+            except:
+                continue

@@ -51,6 +51,27 @@ DereplicationRedis = {
     'password': 'qQKQwjcB0bdqD'
 }
 
+# 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
+# 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
+POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news']
+
+# 推送资讯的用于近期title去重的Redis连接信息，不同的消息推送的存储title的 Sorted Set 的 setname 不一样，保持
+# POST_URLS与 DereplicationRedis 的一致性
+DereplicationRedis = [
+    {
+        'ip': '10.81.88.218',
+        'port': 8103,
+        'password': 'qQKQwjcB0bdqD',
+        'setname': "latest_titles"
+    },
+    {
+        'ip': '10.81.88.218',
+        'port': 8103,
+        'password': 'qQKQwjcB0bdqD',
+        'setname': "solr2_latest_titles"
+    }
+]
+
 
 class StockInformer:
 
@@ -279,7 +300,7 @@ def send(x):
             try:
                 image_list = ast.literal_eval(row['image_list'])
                 if isinstance(image_list, list):
-                    news_json['first_image_oss'] = image_list[0]
+                    news_json['first_image_oss'] = image_list[0].replace("-internal.aliyuncs.com", ".aliyuncs.com")
             except Exception as e:
                 print(e)
 
@@ -287,17 +308,6 @@ def send(x):
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']
-
-        # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-        dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
-                               password=DereplicationRedis['password'])
-        normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
-        title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
-        if dp_redis.zscore('latest_titles', title_hash):
-            dp_redis.zadd('latest_titles', title_hash, news_json['time'])
-            continue
-        else:
-            dp_redis.zadd('latest_titles', title_hash, news_json['time'])
 
         # 从 title 提取出股票相关信息
         if news_json['title'] != '' and news_json['title'] is not None:
@@ -335,8 +345,22 @@ def send(x):
                 # news_json['time'] = 0
 
         try:
-            for url in POST_URLS:
-                requests.post(url, json=[news_json])
+            for i in range(len(POST_URLS)):
+                head = {'Content-Type': 'application/json'}
+                params = {"overwrite": "true", "commitWithin": 100000}
+                url = POST_URLS[i]
+                # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+                dr = DereplicationRedis[i]
+                dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
+                normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
+                title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+                if dp_redis.zscore(dr['setname'], title_hash):
+                    dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+                    continue
+                else:
+                    dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+
+                requests.post(url, params=params, headers=head, json=[news_json])
                 news_json['PUSH_STATUS'] = True
                 news_json['PUSH_TIME'] = str(datetime.datetime.now())
         except Exception as e:
