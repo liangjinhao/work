@@ -35,7 +35,7 @@ REDIS_QUEUE = 'index_pending_queue'
 
 # 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
 # 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
-POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news']
+POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
 
 # 推送资讯的用于近期title去重的Redis连接信息，不同的消息推送的存储title的 Sorted Set 的 setname 不一样，保持
 # POST_URLS与 DereplicationRedis 的一致性
