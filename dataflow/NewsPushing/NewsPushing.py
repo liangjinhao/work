@@ -250,7 +250,7 @@ def send(x):
             "first_image_oss": "",  # 资讯的第一个图片oss链接
             "source_url": "",  # laiyuan
             "publish_time": "",  # 2017-12-01 10:20:49
-            "keywords": "",  # tf-idf最高的8个词
+            # "keywords": "",  # tf-idf最高的8个词
             "source_name": "",  # source
             "title": "",  # title
             "url": "",  # url
@@ -295,7 +295,6 @@ def send(x):
             except Exception as e:
                 print(e)
 
-        news_json['keywords'] = row['keywords'] if 'keywords' in row else ''
         news_json['source_url'] = row['laiyuan']
         news_json['source_name'] = row['source']
         news_json['title'] = row['title']

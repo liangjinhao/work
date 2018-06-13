@@ -295,6 +295,7 @@ def send(x, hs, si):
                             'info:keywords': news_json['keywords']})
                 except Exception:
                     logger.error(traceback.format_exc())
+            del news_json['keywords']  # keywords 字段先不推
 
             if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
                 try:
