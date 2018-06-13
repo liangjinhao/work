@@ -42,18 +42,9 @@ org.apache.hbase:hbase-common:1.1.12
 --py-files /mnt/disk1/data/chyan/work/data_flow/pshc.py /mnt/disk1/data/chyan/work/data_flow/NewsPushing.py
 """
 
-
-POST_URLS = ['http://10.165.101.72:8086/news_update']
-
-DereplicationRedis = {
-    'ip': '10.81.88.218',
-    'port': 8103,
-    'password': 'qQKQwjcB0bdqD'
-}
-
 # 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
 # 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
-POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news']
+POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
 
 # 推送资讯的用于近期title去重的Redis连接信息，不同的消息推送的存储title的 Sorted Set 的 setname 不一样，保持
 # POST_URLS与 DereplicationRedis 的一致性
@@ -356,11 +347,9 @@ def send(x):
                 title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
                 if dp_redis.zscore(dr['setname'], title_hash):
                     dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-                    continue
                 else:
                     dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-
-                requests.post(url, params=params, headers=head, json=[news_json])
+                    requests.post(url, params=params, headers=head, json=[news_json])
                 news_json['PUSH_STATUS'] = True
                 news_json['PUSH_TIME'] = str(datetime.datetime.now())
         except Exception as e:
