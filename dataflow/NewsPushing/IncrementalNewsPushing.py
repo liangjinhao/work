@@ -350,10 +350,10 @@ def send(x, hs, si):
                 title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
                 if dp_redis.zscore(dr['setname'], title_hash):
                     dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-                    continue
                 else:
                     dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-                executor.submit(post, POST_URLS[i], row['rowKey'], news_json)
+                    news_json['index_time'] = datetime.datetime.now().isoformat()
+                    executor.submit(post, POST_URLS[i], row['rowKey'], news_json)
 
 
 def redis_clean_cache(expire_hours=24*30*2):

@@ -259,9 +259,7 @@ def send(x):
             "time": 0,
             "stockcode": "",
             "stockname": "",
-            "industryname": "",
-            "PUSH_STATUS": False,
-            "PUSH_TIME": '2018-01-01 0:0:0.000000'
+            "industryname": ""
         })
 
         news_json['id'] = row['id']
@@ -348,6 +346,7 @@ def send(x):
                     dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
                 else:
                     dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+                    news_json['index_time'] = datetime.datetime.now().isoformat()
                     requests.post(url, params=params, headers=head, json=[news_json])
                 news_json['PUSH_STATUS'] = True
                 news_json['PUSH_TIME'] = str(datetime.datetime.now())
