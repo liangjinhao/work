@@ -235,6 +235,9 @@ def send(x):
 
     site_ranks = site_rank.site_ranks
 
+    postData = []
+    postSize = 100
+
     for row in x:
 
         news_json = dict({
@@ -332,29 +335,51 @@ def send(x):
                 # news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
                 # news_json['time'] = 0
 
-        try:
-            for i in range(len(POST_URLS)):
-                head = {'Content-Type': 'application/json'}
-                params = {"overwrite": "true", "commitWithin": 100000}
-                url = POST_URLS[i]
-                # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-                dr = DereplicationRedis[i]
-                dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
-                normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
-                title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
-                if dp_redis.zscore(dr['setname'], title_hash):
-                    dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-                else:
-                    dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-                    news_json['index_time'] = datetime.datetime.now().isoformat()
-                    requests.post(url, params=params, headers=head, json=[news_json])
-                news_json['PUSH_STATUS'] = True
-                news_json['PUSH_TIME'] = str(datetime.datetime.now())
-        except Exception as e:
-            news_json['PUSH_STATUS'] = False
-            news_json['PUSH_TIME'] = str(datetime.datetime.now())
+        # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+        dr = DereplicationRedis[i]
+        dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
+        normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
+        title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+        if dp_redis.zscore(dr['setname'], title_hash):
+            dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+        else:
+            dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+            news_json['index_time'] = datetime.datetime.now().isoformat()
+            if len(postData) < postSize:
+                postData.append(news_json)
+            else:
+                try:
+                    for i in range(len(POST_URLS)):
+                        head = {'Content-Type': 'application/json'}
+                        params = {"overwrite": "true", "commitWithin": 100000}
+                        url = POST_URLS[i]
+                        requests.post(url, params=params, headers=head, json=postData)
+                        postData = []
+                        result.append({"status": 1})
+                except Exception as e:
+                    result.append({"status": 0})
 
-        result.append(news_json)
+        # try:
+        #     for i in range(len(POST_URLS)):
+        #         head = {'Content-Type': 'application/json'}
+        #         params = {"overwrite": "true", "commitWithin": 100000}
+        #         url = POST_URLS[i]
+        #         # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
+        #         dr = DereplicationRedis[i]
+        #         dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
+        #         normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
+        #         title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+        #         if dp_redis.zscore(dr['setname'], title_hash):
+        #             dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+        #         else:
+        #             dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+        #             news_json['index_time'] = datetime.datetime.now().isoformat()
+        #             requests.post(url, params=params, headers=head, json=[news_json])
+        #         news_json['PUSH_STATUS'] = True
+        #         news_json['PUSH_TIME'] = str(datetime.datetime.now())
+        # except Exception as e:
+        #     news_json['PUSH_STATUS'] = False
+        #     news_json['PUSH_TIME'] = str(datetime.datetime.now())
 
     return result
 
@@ -419,9 +444,8 @@ if __name__ == '__main__':
     # 计算处理后的成功错误条数 比例
     result_df.registerTempTable('res_table')
 
-    correct_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = true").first()[0]
-    wrong_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE PUSH_STATUS = false").first()[0]
-    first_push_time = sparkSession.sql("SELECT PUSH_TIME from res_table ORDER BY PUSH_TIME ASC LIMIT 1").first()[0]
+    correct_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE status = 1").first()[0]
+    wrong_num = sparkSession.sql("SELECT COUNT(*) from res_table WHERE status = 0").first()[0]
 
     print('======推送完成=======')
     print('成功数目：', correct_num, correct_num/(correct_num+wrong_num))
