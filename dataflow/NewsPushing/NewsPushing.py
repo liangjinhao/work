@@ -297,7 +297,7 @@ def send(x):
 
         news_json['doc_feature'] = row['doc_feature'] if 'doc_feature' in row else ''
 
-        if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]':
+        if 'image_list' in row and row['image_list'] != '' and row['image_list'] != '[]' and row['image_list'] is not None:
             try:
                 image_list = ast.literal_eval(row['image_list'])
                 if isinstance(image_list, list):
@@ -370,7 +370,11 @@ def send(x):
                     r = requests.post(url, params=params, headers=head, json=postData)
                     postData = []
                     message = r.text
-                    result.append({"status": 1, "message": ""})
+                    if r.status_code != 200:
+                        print(r.status_code, r.text, postData)
+                        result.append({"status": 0, "message": message})
+                    else:
+                        result.append({"status": 1, "message": message})
             except Exception as e:
                 result.append({"status": 0, "message": message})
         # try:
