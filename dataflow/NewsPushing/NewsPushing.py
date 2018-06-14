@@ -359,7 +359,6 @@ def send(x):
                     params = {"overwrite": "true", "commitWithin": 100000}
                     url = POST_URLS[i]
                     r = requests.post(url, params=params, headers=head, json=postData)
-                    postData = []
                     message = r.text
                     if r.status_code != 200:
                         print("xxx>", r.status_code, r.text, len(postData), postData[0]['id'], postData[len(postData)-1]['id'])
@@ -367,6 +366,7 @@ def send(x):
                     else:
                         print("===>", r.status_code, len(postData), postData[0]['id'], postData[len(postData)-1]['id'])
                         result.append({"status": 1, "message": message})
+                    postData = []
             except Exception as e:
                 print("!!!>", traceback.format_exc())
                 result.append({"status": 0, "message": traceback.format_exc()})
