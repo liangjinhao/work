@@ -46,10 +46,6 @@ org.apache.hbase:hbase-common:1.1.12
 # 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
 # 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
 POST_URLS = ['http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
-# POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
-
-# 推送资讯的用于近期title去重的Redis连接信息，不同的消息推送的存储title的 Sorted Set 的 setname 不一样，保持
-# POST_URLS与 DereplicationRedis 的一致性
 DereplicationRedis = [
     {
         'ip': '10.81.88.218',
@@ -58,18 +54,14 @@ DereplicationRedis = [
         'setname': "solr2_latest_titles"
     }
 ]
+
+# POST_URLS = ['http://10.165.101.72:8086/news_update']
 # DereplicationRedis = [
 #     {
 #         'ip': '10.81.88.218',
 #         'port': 8103,
 #         'password': 'qQKQwjcB0bdqD',
 #         'setname': "latest_titles"
-#     },
-#     {
-#         'ip': '10.81.88.218',
-#         'port': 8103,
-#         'password': 'qQKQwjcB0bdqD',
-#         'setname': "solr2_latest_titles"
 #     }
 # ]
 
@@ -370,10 +362,10 @@ def send(x):
                     postData = []
                     message = r.text
                     if r.status_code != 200:
-                        print("xxx>", r.status_code, r.text, postData)
+                        print("xxx>", r.status_code, r.text, len(postData), postData[0]['id'], postData[len(postData)-1]['id'])
                         result.append({"status": 0, "message": message})
                     else:
-                        print("===>", r.status_code, postData)
+                        print("===>", r.status_code, len(postData), postData[0]['id'], postData[len(postData)-1]['id'])
                         result.append({"status": 1, "message": message})
             except Exception as e:
                 print("!!!>", traceback.format_exc())
@@ -387,10 +379,10 @@ def send(x):
             r = requests.post(url, params=params, headers=head, json=postData)
             message = r.text
             if r.status_code != 200:
-                print("xxx>", r.status_code, r.text, postData)
+                print("xxx>", r.status_code, r.text, len(postData), postData[0]['id'], postData[len(postData)-1]['id'])
                 result.append({"status": 0, "message": message})
             else:
-                print("===>", r.status_code, postData)
+                print("===>", r.status_code, len(postData), postData[0]['id'], postData[len(postData)-1]['id'])
                 result.append({"status": 1, "message": message})
     except Exception as e:
         print("!!!>", traceback.format_exc())
@@ -445,15 +437,10 @@ if __name__ == '__main__':
     df = connector.get_df_from_hbase(catelog, start_row=None, stop_row=None, start_time=startTime,
                                      stop_time=stopTime,
                                      repartition_num=1000, cached=True)
-    df.show(10)
-    print('======count=======', df.count())
+    # df.show(10)
+    # print('======count=======', df.count())
 
-    # raw_tf_idf = sparkSession.read.text('hdfs://10.27.71.108:8020/spark_data/out/idf_data_all2/')
-    # tf_idf_df = raw_tf_idf.rdd.map(lambda x: (x[0].strip('[]').split(',')[0], x[0].strip('[]').split(',')[1]))\
-    #     .toDF(['word', 'tf_idf'])
-    # tf_idf_df.registerTempTable('tf_idf')
-
-    result_rdd = df.rdd.foreachPartition(lambda x: send(x))
+    result_rdd = df.rdd.mapPartitions(lambda x: send(x))
     result_df = sparkSession.createDataFrame(result_rdd)
     result_df.show(100, False)
     # 计算处理后的成功错误条数 比例
