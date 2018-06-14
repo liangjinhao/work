@@ -10,6 +10,7 @@ import ast
 import json
 import redis
 import pymysql
+import traceback
 from ac_search import ACSearch
 import site_rank
 
@@ -355,13 +356,11 @@ def send(x):
             else:
                 dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
                 news_json['index_time'] = datetime.datetime.now().isoformat()
-                if len(postData) < postSize:
-                    postData.append(news_json)
+                postData.append(news_json)
         else:
             postData.append(news_json)
 
         if len(postData) > postSize:
-            message = ""
             try:
                 for i in range(len(POST_URLS)):
                     head = {'Content-Type': 'application/json'}
@@ -371,33 +370,31 @@ def send(x):
                     postData = []
                     message = r.text
                     if r.status_code != 200:
-                        print(r.status_code, r.text, postData)
+                        print("xxx>", r.status_code, r.text, postData)
                         result.append({"status": 0, "message": message})
                     else:
+                        print("===>", r.status_code, postData)
                         result.append({"status": 1, "message": message})
             except Exception as e:
+                print("!!!>", traceback.format_exc())
+                result.append({"status": 0, "message": traceback.format_exc()})
+
+    try:
+        for i in range(len(POST_URLS)):
+            head = {'Content-Type': 'application/json'}
+            params = {"overwrite": "true", "commitWithin": 100000}
+            url = POST_URLS[i]
+            r = requests.post(url, params=params, headers=head, json=postData)
+            message = r.text
+            if r.status_code != 200:
+                print("xxx>", r.status_code, r.text, postData)
                 result.append({"status": 0, "message": message})
-        # try:
-        #     for i in range(len(POST_URLS)):
-        #         head = {'Content-Type': 'application/json'}
-        #         params = {"overwrite": "true", "commitWithin": 100000}
-        #         url = POST_URLS[i]
-        #         # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-        #         dr = DereplicationRedis[i]
-        #         dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
-        #         normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
-        #         title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
-        #         if dp_redis.zscore(dr['setname'], title_hash):
-        #             dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-        #         else:
-        #             dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-        #             news_json['index_time'] = datetime.datetime.now().isoformat()
-        #             requests.post(url, params=params, headers=head, json=[news_json])
-        #         news_json['PUSH_STATUS'] = True
-        #         news_json['PUSH_TIME'] = str(datetime.datetime.now())
-        # except Exception as e:
-        #     news_json['PUSH_STATUS'] = False
-        #     news_json['PUSH_TIME'] = str(datetime.datetime.now())
+            else:
+                print("===>", r.status_code, postData)
+                result.append({"status": 1, "message": message})
+    except Exception as e:
+        print("!!!>", traceback.format_exc())
+        result.append({"status": 0, "message": traceback.format_exc()})
 
     return result
 
