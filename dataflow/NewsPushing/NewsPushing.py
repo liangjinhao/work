@@ -338,7 +338,7 @@ def send(x):
                 # news_json['time'] = 0
 
         # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-        if news_json['title']is not None:
+        if news_json['title'] is not None:
             dr = DereplicationRedis[0]
             dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
             normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
