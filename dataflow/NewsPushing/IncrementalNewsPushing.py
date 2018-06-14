@@ -285,7 +285,7 @@ def send(x, hs, si):
             if 'title' in row and row['title'] != '' and row['title'] is not None and \
                     'content' in row and row['content'] != '' and row['content'] is not None:
                 try:
-                    r = hs.get_hash(row['title'], news_json['content'])
+                    r = hs.get_hash(row['title'], row['content'])
                     news_json['doc_feature'] = r[0]
                     news_json['keywords'] = ' '.join(r[1])
                     # 计算好的结果写入到 Hbase
