@@ -345,31 +345,34 @@ def send(x):
                 # news_json['time'] = 0
 
         # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
-        dr = DereplicationRedis[i]
-        dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
-        normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
-        title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
-        if dp_redis.zscore(dr['setname'], title_hash):
-            dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-        else:
-            dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
-            news_json['index_time'] = datetime.datetime.now().isoformat()
-            if len(postData) < postSize:
-                postData.append(news_json)
+        if news_json['title']is not None:
+            dr = DereplicationRedis[0]
+            dp_redis = redis.Redis(host=dr['ip'], port=dr['port'], password=dr['password'])
+            normed_title = "".join(re.findall("[0-9a-zA-Z\u4e00-\u9fa5]+", news_json['title']))
+            title_hash = hashlib.md5(bytes(normed_title, 'utf-8')).hexdigest()
+            if dp_redis.zscore(dr['setname'], title_hash):
+                dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
             else:
-                message = ""
-                try:
-                    for i in range(len(POST_URLS)):
-                        head = {'Content-Type': 'application/json'}
-                        params = {"overwrite": "true", "commitWithin": 100000}
-                        url = POST_URLS[i]
-                        r = requests.post(url, params=params, headers=head, json=postData)
-                        postData = []
-                        message = r.text
-                        result.append({"status": 1, "message": ""})
-                except Exception as e:
-                    result.append({"status": 0, "message": message})
+                dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
+                news_json['index_time'] = datetime.datetime.now().isoformat()
+                if len(postData) < postSize:
+                    postData.append(news_json)
+        else:
+            postData.append(news_json)
 
+        if len(postData) > postSize:
+            message = ""
+            try:
+                for i in range(len(POST_URLS)):
+                    head = {'Content-Type': 'application/json'}
+                    params = {"overwrite": "true", "commitWithin": 100000}
+                    url = POST_URLS[i]
+                    r = requests.post(url, params=params, headers=head, json=postData)
+                    postData = []
+                    message = r.text
+                    result.append({"status": 1, "message": ""})
+            except Exception as e:
+                result.append({"status": 0, "message": message})
         # try:
         #     for i in range(len(POST_URLS)):
         #         head = {'Content-Type': 'application/json'}
