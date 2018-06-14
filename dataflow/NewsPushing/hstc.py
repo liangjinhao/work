@@ -26,7 +26,7 @@ class Hash:
     # 对content进行分词
     def run(self, texts):
         # 分词，返回结果
-        _HOST = '121.40.125.154'
+        _HOST = '10.168.20.246'  # 部署在bj-wh-service002上的分词服务
         _PORT = '50051'
         mb = 1024 * 1024
         GRPC_CHANNEL_OPTIONS = [('grpc.max_message_length', 64 * mb), ('grpc.max_receive_message_length', 64 * mb)]
