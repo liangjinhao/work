@@ -349,8 +349,6 @@ def send(x):
                 dp_redis.zadd(dr['setname'], title_hash, news_json['time'])
                 news_json['index_time'] = datetime.datetime.now().isoformat()
                 postData.append(news_json)
-        else:
-            postData.append(news_json)
 
         if len(postData) > postSize:
             try:
