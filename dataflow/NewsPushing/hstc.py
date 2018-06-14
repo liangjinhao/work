@@ -66,7 +66,7 @@ class Hash:
             "/noframes|/noscript|/ol|/ul|/p|/pre|/table|/tbody|/td|/tfood|/th|/thead|/tr|br/?", content)
         clean_content = map(lambda x: "".join(re.findall('[\u4e00-\u9fa5]+', x)), unlabel_content)
         clean_content_sorted = sorted(clean_content, key=lambda x: len(x), reverse=True)[:3]
-        content_dit = self.run(clean_content_sorted)
+        content_dit = self.run(''.join(clean_content_sorted))
         # TF-IDF提取权重最高的８个词
         keyWords = []
         for word in content_dit:
