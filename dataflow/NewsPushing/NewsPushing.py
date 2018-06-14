@@ -44,7 +44,8 @@ org.apache.hbase:hbase-common:1.1.12
 
 # 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
 # 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
-POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
+POST_URLS = ['http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
+# POST_URLS = ['http://10.165.101.72:8086/news_update', 'http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
 
 # 推送资讯的用于近期title去重的Redis连接信息，不同的消息推送的存储title的 Sorted Set 的 setname 不一样，保持
 # POST_URLS与 DereplicationRedis 的一致性
@@ -53,15 +54,23 @@ DereplicationRedis = [
         'ip': '10.81.88.218',
         'port': 8103,
         'password': 'qQKQwjcB0bdqD',
-        'setname': "latest_titles"
-    },
-    {
-        'ip': '10.81.88.218',
-        'port': 8103,
-        'password': 'qQKQwjcB0bdqD',
         'setname': "solr2_latest_titles"
     }
 ]
+# DereplicationRedis = [
+#     {
+#         'ip': '10.81.88.218',
+#         'port': 8103,
+#         'password': 'qQKQwjcB0bdqD',
+#         'setname': "latest_titles"
+#     },
+#     {
+#         'ip': '10.81.88.218',
+#         'port': 8103,
+#         'password': 'qQKQwjcB0bdqD',
+#         'setname': "solr2_latest_titles"
+#     }
+# ]
 
 
 class StockInformer:
@@ -348,16 +357,18 @@ def send(x):
             if len(postData) < postSize:
                 postData.append(news_json)
             else:
+                message = ""
                 try:
                     for i in range(len(POST_URLS)):
                         head = {'Content-Type': 'application/json'}
                         params = {"overwrite": "true", "commitWithin": 100000}
                         url = POST_URLS[i]
-                        requests.post(url, params=params, headers=head, json=postData)
+                        r = requests.post(url, params=params, headers=head, json=postData)
                         postData = []
-                        result.append({"status": 1})
+                        message = r.text
+                        result.append({"status": 1, "message": ""})
                 except Exception as e:
-                    result.append({"status": 0})
+                    result.append({"status": 0, "message": message})
 
         # try:
         #     for i in range(len(POST_URLS)):
@@ -440,7 +451,7 @@ if __name__ == '__main__':
 
     result_rdd = df.rdd.foreachPartition(lambda x: send(x))
     result_df = sparkSession.createDataFrame(result_rdd)
-
+    result_df.show(100, False)
     # 计算处理后的成功错误条数 比例
     result_df.registerTempTable('res_table')
 
