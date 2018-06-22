@@ -356,6 +356,8 @@ def send(x):
                     head = {'Content-Type': 'application/json'}
                     params = {"overwrite": "true", "commitWithin": 100000}
                     url = POST_URLS[i]
+                    if len(postData) == 0:
+                        continue
                     r = requests.post(url, params=params, headers=head, json=postData)
                     message = r.text
                     if r.status_code != 200:
@@ -374,6 +376,8 @@ def send(x):
             head = {'Content-Type': 'application/json'}
             params = {"overwrite": "true", "commitWithin": 100000}
             url = POST_URLS[i]
+            if len(postData) == 0:
+                continue
             r = requests.post(url, params=params, headers=head, json=postData)
             message = r.text
             if r.status_code != 200:

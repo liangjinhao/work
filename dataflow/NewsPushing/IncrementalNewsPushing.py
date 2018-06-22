@@ -362,10 +362,9 @@ def redis_clean_cache(expire_hours=24*30*2):
     :param expire_hours: 超时小时数，默认是超过两个月认为超时
     :return:
     """
-    dp_redis = redis.Redis(host=DereplicationRedis['ip'], port=DereplicationRedis['port'],
-                           password=DereplicationRedis['password'])
     ttl = time.time() - expire_hours*60*60
     for i in DereplicationRedis:
+        dp_redis = redis.Redis(host=i['ip'], port=i['port'], password=i['password'])
         num = dp_redis.zremrangebyscore(i['setname'], 0, ttl)
         logger.warning('清理完 Redis ' + i['setname'] + ' 缓存，删除 ' + str(num) + ' 条过期数据')
 

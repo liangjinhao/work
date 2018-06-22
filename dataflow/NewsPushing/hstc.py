@@ -1,16 +1,35 @@
-import grpc
-import hanlp_pb2
-import hanlp_pb2_grpc
 import re
 import hashlib
+import hanlp_segmentor
+import threading
 
 
-class Hash:
+class Singleton(type):
+
+    _instances = dict()
+    _lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+
+        if cls not in cls._instances:
+            with cls._lock:
+                if cls not in cls._instances:
+                    cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        else:
+            with cls._lock:
+                if cls in cls._instances:
+                    cls._instances[cls].__init__(*args, **kwargs)
+
+        return cls._instances[cls]
+
+
+class Hash(metaclass=Singleton):
     """
-    Used to get the hash value of the title and content
+    根据一篇网页的内容和标题计算出一个表征该网页内容的特征值
     """
+
     def __init__(self):
-        # get idf dit
+        # get idf dict
         self.dit = {}
         with open("./idf_clean.txt", "r") as f:
             for line in f:
@@ -22,32 +41,14 @@ class Hash:
                 else:
                     pass
         f.close()
+        self.sgementor = hanlp_segmentor.HanlpSegmentor()
 
-    # 对content进行分词
-    def run(self, texts):
-        # 分词，返回结果
-        _HOST = '10.168.20.246'  # 部署在bj-wh-service002上的分词服务
-        _PORT = '50051'
-        mb = 1024 * 1024
-        GRPC_CHANNEL_OPTIONS = [('grpc.max_message_length', 64 * mb), ('grpc.max_receive_message_length', 64 * mb)]
-        conn = grpc.insecure_channel(_HOST + ':' + _PORT, options=GRPC_CHANNEL_OPTIONS)
-        client = hanlp_pb2_grpc.GreeterStub(channel=conn)
-        response = client.segment(
-            hanlp_pb2.HanlpRequest(text=texts, indexMode=0, nameRecognize=1, translatedNameRecognize=1))
-        # TF词频
-        dit = {}
-        # return response.data
-        for term in response.data:
-            if term.word != " " and term.word != ",":
-                # print term.word, len(term.word)
-                if term.word not in dit:
-                    dit[term.word] = 1
-                else:
-                    dit[term.word] += 1
-        return dit
-
-    # title处理
     def clean_title(self, title):
+        """
+        清洗掉 Title 中的时间
+        :param title: 网页文章标题
+        :return: 清洗过的标题
+        """
         rr1 = re.compile(r'([0-9]*)\.([0-9+]*)')
         rr2 = re.compile(r'([0-9]*)月|([0-9]*)日')
         clean_title = ''
@@ -59,15 +60,29 @@ class Hash:
             clean_title = "".join(res2)
         return clean_title
 
-    # content切词 并 依据TF-IDF抽取关键词
     def cut_content(self, content):
+        """
+        从网页内容（源网页带标签的文本）中选取出6个 TF-IDF 最高的词
+        :param content: 源网页带标签的文本
+        :return: 6个 TF-IDF 最高的词 list
+        """
+        # 按网页标签将网页内容切成各个段落
         unlabel_content = re.split(
             "\\n|\\r|/address|/caption|/dd|/div|/dl|/dt|/fieldset|/form|/h1|/h2|/h3|/h4|/h5|/h6|/hr|/legend|/li|"
             "/noframes|/noscript|/ol|/ul|/p|/pre|/table|/tbody|/td|/tfood|/th|/thead|/tr|br/?", content)
         clean_content = map(lambda x: "".join(re.findall('[\u4e00-\u9fa5]+', x)), unlabel_content)
+        # 选取网页中最长的3个段落
         clean_content_sorted = sorted(clean_content, key=lambda x: len(x), reverse=True)[:3]
-        content_dit = self.run(''.join(clean_content_sorted))
-        # TF-IDF提取权重最高的８个词
+        # 分词统计TF
+        content_dit = {}
+        segs = self.sgementor.get_segments(clean_content_sorted)
+        for i in segs:
+            term = i[0]
+            if term.word not in content_dit:
+                content_dit[term.word] = 1
+            else:
+                content_dit[term.word] += 1
+        # TF-IDF 提取权重最高的 6 个词
         keyWords = []
         for word in content_dit:
             if word in self.dit:
@@ -76,28 +91,21 @@ class Hash:
             else:
                 keyWords.append([word, -100])
         keyWord = sorted(keyWords, key=lambda x: x[1], reverse=True)
-        # 取前８个
-        keyWord = list(map(lambda x: x[0], keyWord[:6]))
-        return keyWord
+        top_words = list(map(lambda x: x[0], keyWord[:6]))
+        return top_words
 
-    # hash映射函数
-    def hash_func(self, x):
-        return int(hashlib.md5(bytes(x, 'utf-8')).hexdigest(), 16)
-
-    # 获取该文章的hash值
     def get_hash(self, title, content):
-        # 这个地方尝试5次
-        for i in range(5):
-            try:
-                content_ = self.cut_content(content)
-                title_ = self.clean_title(title)
-                # title+content的hash值
-                if title_:
-                    title_content = title_+"".join(content_)
-                    value = self.hash_func(title_content)
-                else:
-                    value = self.hash_func("".join(content_))
-                # return value
-                return [value, content_]
-            except:
-                continue
+        """
+        获取网页的 hash 特征值
+        :param title: 网页标题
+        :param content: 待标签的网页内容
+        :return:
+        """
+        content_ = self.cut_content(content)
+        title_ = self.clean_title(title)
+        if title_:
+            title_content = title_+"".join(content_)
+            value = int(hashlib.md5(bytes(title_content, 'utf-8')).hexdigest(), 16)
+        else:
+            value = int(hashlib.md5(bytes("".join(content_), 'utf-8')).hexdigest(), 16)
+        return [value, content_]
