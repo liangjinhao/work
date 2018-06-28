@@ -106,6 +106,7 @@ class CRF:
             words.append(item[0])
             pos.append(item[1])
 
+        # 把空格替换成，（因为CRF++忽略空格而分词不忽略，导致对齐出错）
         new_chars = []
         replaced_char = ','
         index = []

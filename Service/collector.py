@@ -148,13 +148,10 @@ class Collector:
                 if crf_tag == 'useless' and weight > 0.3:
                     new_crf_result.append(
                         {'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'subject4'})
-                # elif crf_tag != 'useless' and weight < 0.2:
-                #     new_crf_result.append(
-                #         {'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'useless'})
                 else:
                     new_crf_result.append(crf_result[i])
             elif self.domain == 'news':
-                if crf_tag == 'useless'  and weight > 0:
+                if crf_tag == 'useless' and weight > 0.3:
                     new_crf_result.append(
                         {'pos': crf_result[i]['pos'], 'term': crf_result[i]['term'], 'type': 'news_others'})
                 else:

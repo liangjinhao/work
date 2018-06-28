@@ -19,29 +19,30 @@
 
 ```
 # 安装 Python3.6
-$ sudo apt-get install libbz2-dev
-$ yum groupinstall 'Development Tools'  # centos 环境
-$ yum install zlib-devel bzip2-devel openssl-devel ncurese-devel  # centos 环境
+sudo apt-get install libbz2-dev # ubuntu 环境
+sudo yum groupinstall 'Development Tools'  # centos 环境
+sudo yum install zlib-devel bzip2-devel openssl-devel ncurese-devel  # centos 环境
+sudo yum -y install readline-devel
 
-$ wget https://www.python.org/ftp/python/3.6.1/Python-3.6.1.tgz
-$ tar -zxf Python-3.6.1.tgz
-$ cd Python-3.6.1
-$ ./configure
-$ make
-$ sudo make install
+wget https://www.python.org/ftp/python/3.6.1/Python-3.6.1.tgz
+tar -zxf Python-3.6.1.tgz
+cd Python-3.6.1
+./configure
+make
+sudo make install
 
 
 # GCC升级到4.8.2，这个需要系统管理员来做
-$ wget http://gcc.skazkaforyou.com/releases/gcc-4.8.2/gcc-4.8.2.tar.gz
-$ tar -xvf gcc-4.8.2.tar.gz
-$ cd gcc-4.8.2/
-$ ./contrib/download_prerequisites
-$ mkdir gcc-build-4.8.2
-$ cd gcc-build-4.8.2
-$ ../configure --enable-checking=release --enable-languages=c,c++ --disable-multilib
-$ make
-$ make  install
-$ gcc -v
+wget http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.gz
+tar -xvf gcc-4.8.2.tar.gz
+cd gcc-4.8.2/
+./contrib/download_prerequisites
+mkdir gcc-build-4.8.2
+cd gcc-build-4.8.2
+../configure --enable-checking=release --enable-languages=c,c++ --disable-multilib
+make
+make  install
+gcc -v
 ```
 
 - 使用 pip 安装以下依赖的库
