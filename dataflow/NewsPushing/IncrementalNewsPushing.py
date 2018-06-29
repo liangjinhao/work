@@ -351,8 +351,9 @@ def send(x, hs, si):
                     news_json['publish_time'] = t
                 except:
                     continue
-                    # news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
-                    # news_json['time'] = 0
+
+            if news_json['title'] is None or news_json['title'] == "":
+                continue
 
             # 从 title 提取出股票相关信息
             stock_info = si.extract_stock_info(news_json['title'])
@@ -364,7 +365,7 @@ def send(x, hs, si):
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
 
             # 当 Title 太长，截取 title
-            if len(news_json['title']) > 50:
+            if news_json['title'] is not None and len(news_json['title']) > 50:
                 news_json['title'] = re.split('[;；?？.。\n]', news_json['title'])[0]
                 # 如果句号分号问号换行仍无法切割到50以下，则尝试用逗号空格
                 if len(news_json['title']) > 50:

@@ -329,6 +329,8 @@ def send(x):
             news_json['stockcode'] = json.dumps(stock_pair) if stock_pair != [] else ''
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
+        else:
+            continue
 
         news_json['url'] = row['url']
         news_json['tags'] = row['tag']
@@ -354,7 +356,7 @@ def send(x):
                 continue
 
         # 当 Title 太长，截取 title
-        if len(news_json['title']) > 50:
+        if news_json['title'] is not None and len(news_json['title']) > 50:
             news_json['title'] = re.split('[;；?？.。\n]', news_json['title'])[0]
             # 如果句号分号问号换行仍无法切割到50以下，则尝试用逗号空格
             if len(news_json['title']) > 50:
