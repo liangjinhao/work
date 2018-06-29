@@ -13,6 +13,7 @@ import pymysql
 import traceback
 from ac_search import ACSearch
 import site_rank
+import wechat_subscription
 
 
 """
@@ -237,6 +238,21 @@ def send(x):
 
     site_ranks = site_rank.site_ranks
 
+    # 公众号
+    wechat_subscriptions = wechat_subscription.wechat_subscriptions
+    wechat_sub = {}
+    for i in wechat_subscriptions:
+        sub_id = i[0]
+        name = i[1]
+        category = i[2]
+        is_high_quality = i[3]
+        if name in wechat_sub:
+            wechat_sub[name][0] = sub_id
+            wechat_sub[name][1] = is_high_quality
+            wechat_sub[name][2].append(category)
+        else:
+            wechat_sub[name] = [sub_id, is_high_quality, [category]]
+
     postData = []
     postSize = 100
 
@@ -264,7 +280,9 @@ def send(x):
             "time": 0,
             "stockcode": "",
             "stockname": "",
-            "industryname": ""
+            "industryname": "",
+            "is_high_quality": "",  # 如果来源是高质量公众号，置1，否则置0
+            "category_other": ""  # 如果来源是公众号，这个字段指公众号的多个可能的类别，比如“买方”，“个人”，“媒体”等等
         })
 
         news_json['id'] = row['id']
@@ -334,8 +352,20 @@ def send(x):
                 news_json['publish_time'] = t
             except:
                 continue
-                # news_json['publish_time'] = str(datetime.datetime.utcfromtimestamp(0))
-                # news_json['time'] = 0
+
+        # 当 Title 太长，截取 title
+        if len(news_json['title']) > 50:
+            news_json['title'] = re.split('[;；?？.。\n]', news_json['title'])[0]
+            # 如果句号分号问号换行仍无法切割到50以下，则尝试用逗号空格
+            if len(news_json['title']) > 50:
+                news_json['title'] = re.split('[,， ]', news_json['title'])[0]
+                if len(news_json['title']) > 50:
+                    news_json['title'] = news_json['title'][:50]
+
+        # 处理公众号信息
+        if news_json["source"] in wechat_sub:
+            news_json['is_high_quality'] = wechat_sub[news_json["source"]][1]
+            news_json['category_other'] = wechat_sub[news_json["source"]][2]
 
         # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
         if news_json['title'] is not None:

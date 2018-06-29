@@ -20,6 +20,7 @@ import pymysql
 from ac_search import ACSearch
 import site_rank
 import hstc
+import wechat_subscription
 
 
 """
@@ -161,19 +162,22 @@ def get_hbase_row(rowkey):
     :param rowkey:
     :return:
     """
-    rowkey = bytes(rowkey, encoding='utf-8') if isinstance(rowkey, str) else rowkey
-    row = client.getRow(HBASE_TABLE_NAME, rowkey, attributes=None)
-    if len(row) > 0:
-        result = dict()
-        result['rowKey'] = str(row[0].row, 'utf-8')
-        columns = row[0].columns
-        for column in columns:
-            result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
-        return result
-    else:
-        logger.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8')
-                     + '，错误为' + traceback.format_exc())
-        return {}
+    try:
+        rowkey = bytes(rowkey, encoding='utf-8') if isinstance(rowkey, str) else rowkey
+        row = client.getRow(HBASE_TABLE_NAME, rowkey, attributes=None)
+        if len(row) > 0:
+            result = dict()
+            result['rowKey'] = str(row[0].row, 'utf-8')
+            columns = row[0].columns
+            for column in columns:
+                result[str(column, 'utf-8').split(':')[-1]] = str(columns[column].value, 'utf-8')
+            return result
+        else:
+            logger.error("未在 Hbase 中找到该条数据，请求rowKey为:" + str(rowkey, encoding='utf-8')
+                         + '，错误为' + traceback.format_exc())
+            return {}
+    except Exception as e:
+        logger.error(e)
 
 
 def insert(table_name, row):
@@ -237,6 +241,21 @@ def send(x, hs, si):
     """
     site_ranks = site_rank.site_ranks
 
+    # 公众号
+    wechat_subscriptions = wechat_subscription.wechat_subscriptions
+    wechat_sub = {}
+    for i in wechat_subscriptions:
+        sub_id = i[0]
+        name = i[1]
+        category = i[2]
+        is_high_quality = i[3]
+        if name in wechat_sub:
+            wechat_sub[name][0] = sub_id
+            wechat_sub[name][1] = is_high_quality
+            wechat_sub[name][2].append(category)
+        else:
+            wechat_sub[name] = [sub_id, is_high_quality, [category]]
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
 
         for row in x:
@@ -264,7 +283,9 @@ def send(x, hs, si):
                 "keywords": "",
                 "stockcode": "",
                 "stockname": "",
-                "industryname": ""
+                "industryname": "",
+                "is_high_quality": "",  # 如果来源是高质量公众号，置1，否则置0
+                "category_other": ""  # 如果来源是公众号，这个字段指公众号的多个可能的类别，比如“买方”，“个人”，“媒体”等等
             })
 
             news_json['id'] = row['rowKey']
@@ -341,6 +362,20 @@ def send(x, hs, si):
             news_json['stockcode'] = json.dumps(stock_pair) if stock_pair != [] else ''
             news_json['stockname'] = ','.join(stock_info['stock_name'])
             news_json['industryname'] = ','.join(stock_info['stock_industry'])
+
+            # 当 Title 太长，截取 title
+            if len(news_json['title']) > 50:
+                news_json['title'] = re.split('[;；?？.。\n]', news_json['title'])[0]
+                # 如果句号分号问号换行仍无法切割到50以下，则尝试用逗号空格
+                if len(news_json['title']) > 50:
+                    news_json['title'] = re.split('[,， ]', news_json['title'])[0]
+                    if len(news_json['title']) > 50:
+                        news_json['title'] = news_json['title'][:50]
+
+            # 处理公众号信息
+            if news_json["source"] in wechat_sub:
+                news_json['is_high_quality'] = wechat_sub[news_json["source"]][1]
+                news_json['category_other'] = wechat_sub[news_json["source"]][2]
 
             for i in range(len(POST_URLS)):
                 dr = DereplicationRedis[i]
