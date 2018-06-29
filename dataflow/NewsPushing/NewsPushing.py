@@ -46,7 +46,7 @@ org.apache.hbase:hbase-common:1.1.12
 
 # 原来的资讯的推送地址 'http://10.165.101.72:8086/news_update'
 # 新加的资讯的推送地址 'http://10.80.62.207:8080/onlySolr/core_news'
-POST_URLS = ['http://10.80.62.207:8080/onlySolr/core_news/update?wt=json']
+POST_URLS = ['http://10.168.123.53:8086/newsSearch/news_update']
 DereplicationRedis = [
     {
         'ip': '10.81.88.218',
@@ -363,9 +363,9 @@ def send(x):
                     news_json['title'] = news_json['title'][:50]
 
         # 处理公众号信息
-        if news_json["source"] in wechat_sub:
-            news_json['is_high_quality'] = wechat_sub[news_json["source"]][1]
-            news_json['category_other'] = wechat_sub[news_json["source"]][2]
+        if news_json["source_name"] in wechat_sub:
+            news_json['is_high_quality'] = wechat_sub[news_json["source_name"]][1]
+            news_json['category_other'] = wechat_sub[news_json["source_name"]][2]
 
         # 根据 Redis 中 Title 的缓存去重，选择是否进行推送
         if news_json['title'] is not None:

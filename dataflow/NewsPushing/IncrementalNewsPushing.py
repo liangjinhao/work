@@ -373,9 +373,9 @@ def send(x, hs, si):
                         news_json['title'] = news_json['title'][:50]
 
             # 处理公众号信息
-            if news_json["source"] in wechat_sub:
-                news_json['is_high_quality'] = wechat_sub[news_json["source"]][1]
-                news_json['category_other'] = wechat_sub[news_json["source"]][2]
+            if news_json["source_name"] in wechat_sub:
+                news_json['is_high_quality'] = wechat_sub[news_json["source_name"]][1]
+                news_json['category_other'] = wechat_sub[news_json["source_name"]][2]
 
             for i in range(len(POST_URLS)):
                 dr = DereplicationRedis[i]
